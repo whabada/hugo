@@ -78,7 +78,7 @@ public class VideoDownloader {
             while ((len1 = is.read(buffer)) > 0) {
                 fos.write(buffer,0, len1);  
             }
-        }*/
+        } */
         Configuration conf = new Configuration();
         conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
         conf.addResource(new Path("/etc/alternatives/hadoop-conf/hdfs-site.xml"));
