@@ -2,16 +2,15 @@ package vicra;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 
 import javax.imageio.ImageIO;
+import javax.imageio.stream.ImageInputStream;
 
-import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
@@ -20,7 +19,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.hadoop.mapreduce.Mapper.Context;
+
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
@@ -31,11 +30,10 @@ public class ColorAnalyzer extends Configured implements Tool {
 
 	private final static IntWritable one = new IntWritable(1);
 
-
-	public static class ColorAnalyzerMapper extends Mapper<LongWritable, BufferedImage, Text, IntWritable> {
+	public static class ColorAnalyzerMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
 
 		private Text rgb = new Text();
-	
+
 		/**
 		 * Die Mapper Funktion erhaelt ein Bild und analysiert die Farbe saemtlicher Pixel des erhaltenen Images. 
 		 * Die Funktion funktioniert nur, wenn das Bild nicht null ist und groeßer als 1x1 ist.
@@ -46,55 +44,49 @@ public class ColorAnalyzer extends Configured implements Tool {
 		 * @throws IOException
 		 * @throws InterruptedException
 		 */
-		public void map(LongWritable key, BufferedImage image, Context context) throws IOException, InterruptedException {
+		public void map(LongWritable key, Text url, Context context) throws IOException, InterruptedException {
+			System.out.println("map");
+
+			BufferedImage image = null;
+		//	FileSystem fs = FileSystem.get(context.getConfiguration());
+		//	Path inputPath = new Path(url.toString());
+			try {
+				 image = ImageIO.read(new File("/home/cloudera/Pictures/sample_01.jpg"));
+				// image = ImageIO.read(new File(url.toString()));
+				//FSDataInputStream in = fs.open(inputPath);
+				//ImageInputStream imageInput = ImageIO.createImageInputStream(in);
+				//image = ImageIO.read(imageInput);
+
+			} catch (IOException e) {
+			}
+
+
 			if (image != null && image.getWidth() > 1 && image.getHeight() > 1) {
-				
-				Configuration conf = context.getConfiguration();
-				FileSystem fs = FileSystem.get(conf);
-				
-			
-
-				Path inputPath = ( context.getInputSplit()).getPath();
-				Path outputPath = new Path(args[1]);
-
-				if (fs.exists(outputPath)) { //fur Testzwecke
-					fs.delete(outputPath, true);
-				}
-				FSDataInputStream in = fs.open(inputPath);
-				FSDataOutputStream out = fs.create(outputPath);
-				byte buffer[] = new byte[1024];
-				try {
-					int bytesRead = 0;
-					while ((bytesRead = in.read(buffer)) > 0) {
-						out.write(buffer, 0, bytesRead);
-					}
-				} catch (IOException e) {
-					System.out.println("Error while copying file");
-				} finally {
-					in.close();
-					out.flush();
-					out.close();
-				}
-				
-
-				
-				
 				// Get dimensions of image
 				int w = image.getWidth();
 				int h = image.getHeight();
 				long sumPixel = w*h;
+				String result ="";
 				long sumr = 0, sumg = 0, sumb = 0;
 				for (int x = 0; x < w; x++) {
 					for (int y = 0; y < h; y++) {
 						Color pixel = new Color(image.getRGB(x, y));
-						sumr += pixel.getRed(); //rot
-						sumg += pixel.getGreen(); // gruen
-						sumb += pixel.getBlue(); // blau
+						sumr = pixel.getRed(); //rot
+						sumg = pixel.getGreen(); // gruen
+						sumb = pixel.getBlue(); // blau
+
+						result = sumr + " " +  sumg + " " + sumb;// +" " + sumPixel;
+						this.rgb.set(result);
+						context.write(rgb, one);
 					}
 				}
-				String result = sumr + " " +  sumg + " " + sumb +" " + sumPixel;
-				this.rgb.set(result);
-				context.write(rgb, one);
+				//		sumr = sumr / sumPixel;
+				//		sumg = sumg / sumPixel;
+				//		sumb = sumb / sumPixel;
+
+				//TODO Gibt jetzt fuer alle Pixel einen Wert raus
+				//TODO Eingabe in 10er Rangen der Werte
+
 			}
 			else { 
 				System.out.println("kein Bild."); //Kein Bild geladen
@@ -155,37 +147,43 @@ public class ColorAnalyzer extends Configured implements Tool {
 		Configuration conf = getConf();
 		FileSystem fs = FileSystem.get(conf);
 
+		conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
+		conf.addResource(new Path("/etc/alternatives/hadoop-conf/hdfs-site.xml"));
+
+		/*
+		Path inputPath = new Path ("/home/cloudera/Pictures/sample_01.jpg");
+		Path outputPath = new Path("picOut1/");
+		Path outputPath2 = new Path("picOut2/");
+		 */
 		Path inputPath = new Path (args[0]);
 		Path outputPath = new Path(args[1]);
 
-		if (fs.exists(outputPath)) { //fur Testzwecke
+		if (fs.exists(outputPath)) { 
 			fs.delete(outputPath, true);
 		}
+
+		/**
+		 * 
 		FSDataInputStream in = fs.open(inputPath);
 		FSDataOutputStream out = fs.create(outputPath);
-		byte buffer[] = new byte[1024];
-		try {
-			int bytesRead = 0;
-			while ((bytesRead = in.read(buffer)) > 0) {
-				out.write(buffer, 0, bytesRead);
-			}
-		} catch (IOException e) {
-			System.out.println("Error while copying file");
-		} finally {
-			in.close();
-			out.flush();
-			out.close();
-		}
+		ImageInputStream imageInput = ImageIO.createImageInputStream(in);
+		BufferedImage image = ImageIO.read(imageInput);
+		 */
+
 
 		Job job = Job.getInstance();
 		job.setJarByClass(ColorAnalyzer.class);
+
 		job.setMapperClass(ColorAnalyzerMapper.class);
 		job.setReducerClass(AverageColorReducer.class);
+
 		job.setOutputKeyClass(Text.class);
-		job.setOutputValueClass(Text.class);
+		job.setOutputValueClass(IntWritable.class);
+
 		FileInputFormat.addInputPath(job, inputPath);	
 		FileOutputFormat.setOutputPath(job, outputPath);
 
+		System.out.println("run finish");
 		return job.waitForCompletion(true) ? 0 : 1;
 	}
 
