@@ -26,6 +26,7 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 
+
 public class ColorAnalyzer extends Configured implements Tool {
 
 	private final static IntWritable one = new IntWritable(1);
@@ -180,6 +181,7 @@ public class ColorAnalyzer extends Configured implements Tool {
 
 		return result;
 	}
+	
 
 	@Override
 	public int run(String[] args) throws Exception {
