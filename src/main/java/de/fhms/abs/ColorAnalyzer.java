@@ -1,3 +1,4 @@
+package de.fhms.abs;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
@@ -23,6 +24,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
+
 
 
 public class ColorAnalyzer extends Configured implements Tool {
@@ -179,6 +181,7 @@ public class ColorAnalyzer extends Configured implements Tool {
 
 		return result;
 	}
+	
 
 	@Override
 	public int run(String[] args) throws Exception {
