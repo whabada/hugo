@@ -193,8 +193,8 @@ public class ColorAnalyzer extends Configured implements Tool {
 
 		return result;
 	}
-
-	@Override
+	
+//	@Override
 	public int run(String[] args) throws Exception {
 		Configuration conf = new Configuration();
 		Path inputPath = new Path (args[0]);
