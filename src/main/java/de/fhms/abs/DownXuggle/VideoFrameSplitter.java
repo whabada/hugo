@@ -44,6 +44,10 @@ public class VideoFrameSplitter {
 	private static int counter; 
 	private static String outputFilename;
 	private static String fileNameForReturn;
+	private static String outputFilePath;
+
+	//Namen des Videos holen
+	private static String videoFileName = VideoDownloader.getVideoFilename();
 
 	// Ein Video Stream Index, den wir nutzen, dass wir auch tatsaechlich nur Frames eines bestimmten VideoStreams nehmen
 	private static int mVideoStreamIndex = -1;
@@ -59,7 +63,6 @@ public class VideoFrameSplitter {
 		IMediaReader mediaReader = ToolFactory.makeReader(inputFilename);
 		inputFilename = args[0];
 		outputFilePrefix = args[1];
-
 		//initialisiere counter
 		counter =0;
 
@@ -114,7 +117,8 @@ public class VideoFrameSplitter {
 				return "";
 			}
 			try { 
-				outputFilename = outputFilePrefix + counter + ".png"; 
+				outputFilename = outputFilePrefix + videoFileName + counter + ".png"; 
+				outputFilePath = "hugo/";
 
 				Configuration conf = new Configuration();
 				conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
@@ -124,7 +128,9 @@ public class VideoFrameSplitter {
 				ByteArrayOutputStream os = new ByteArrayOutputStream();
 				ImageIO.write(image, "png", os);
 				InputStream is = new ByteArrayInputStream(os.toByteArray());
-				Path outFile = new Path("hugo/" + outputFilename);
+				// Frames hinzugefügt
+
+				Path outFile = new Path(outputFilePath + outputFilename);
 				if (fs.exists(outFile)){
 					fs.delete(outFile, true);
 				}
@@ -152,7 +158,7 @@ public class VideoFrameSplitter {
 	}
 
 	public static String getOutputfilename(){
-		return "hugo/"+outputFilePrefix;
+		return outputFilePath+outputFilePrefix;
 
 	}
 }

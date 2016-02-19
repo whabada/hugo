@@ -27,7 +27,7 @@ public class Main {
 			String homePath= fs.getWorkingDirectory().toString();
 
 			if (vidPath != null && !vidPath.equals("")){
-				outPath = "pics/";
+				outPath = "Frames/";
 				String[] inOut = new String[]{homePath+"/"+vidPath, outPath};
 				VideoFrameSplitter.split(inOut);
 				System.out.println("Success.");
@@ -39,7 +39,7 @@ public class Main {
 					BufferedWriter oFile = new BufferedWriter(new OutputStreamWriter(os));
 
 					for (int i=0; i<counter; i++){
-						String line = String.format(fs.getWorkingDirectory()+"/" + VideoFrameSplitter.getOutputfilename()+i+".jpg" + "\n",
+						String line = String.format(fs.getWorkingDirectory()+"/" + VideoFrameSplitter.getOutputfilename()+VideoDownloader.getVideoFilename()+i+".jpg" + "\n",
 						System.getProperty("line.separator"));
 						oFile.write(line);
 						System.out.println(line);

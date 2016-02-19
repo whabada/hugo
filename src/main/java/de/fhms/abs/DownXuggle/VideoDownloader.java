@@ -14,6 +14,8 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 public class VideoDownloader {
+	
+	private static String vidFileName;
 
 	public static String download (String url) throws IOException {
 		URL u = null;
@@ -28,10 +30,13 @@ public class VideoDownloader {
 		String[] splitUrl =  u.getPath().split("/");
 		String fileName = splitUrl[splitUrl.length -1];
 		InputStream is = u.openStream();
+		
+		vidFileName = fileName.split("\\.")[0];
+		System.out.println(vidFileName);
 		//String storagePath = Environment.getExternalStorageDirectory().toString();
-		String storagePath = "/home/cloudera/Videos/";
-		File f = new File(storagePath,fileName);
-		FileOutputStream fos = new FileOutputStream(f);
+		//String storagePath = "/home/cloudera/Videos/";
+		//File f = new File(storagePath,fileName);
+		//FileOutputStream fos = new FileOutputStream(f);
 
 		/*if(is != null) {
             while ((len1 = is.read(buffer)) > 0) {
@@ -43,7 +48,7 @@ public class VideoDownloader {
 		conf.addResource(new Path("/etc/alternatives/hadoop-conf/hdfs-site.xml"));
 		FileSystem fs = FileSystem.get(conf);
 
-		Path outFile = new Path("hugo/" + fileName);
+		Path outFile = new Path("hugo/Videos/" + fileName);
 		FSDataOutputStream out = fs.create(outFile);
 
 		byte[] buffer = new byte[1024];
@@ -182,5 +187,10 @@ public class VideoDownloader {
 
 		System.out.println("FILE : " + filePath + " - Last modification time : " + time);
 		return filePath;  
+	}
+	
+	public static String getVideoFilename(){
+		return vidFileName.toString();
+
 	}
 }
