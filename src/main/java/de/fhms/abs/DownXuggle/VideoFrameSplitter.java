@@ -1,12 +1,30 @@
 package de.fhms.abs.DownXuggle;
 
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
+import javax.imageio.ImageIO;
+import javax.imageio.stream.ImageOutputStream;
+
+import org.apache.avro.util.ByteBufferOutputStream;
+import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FSInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.BytesWritable;
+import org.apache.hadoop.io.IOUtils;
+import org.apache.hadoop.io.SequenceFile;
+import org.apache.hadoop.io.SequenceFile.CompressionType;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.hadoop.util.ReflectionUtils;
 
 import com.xuggle.mediatool.IMediaReader;
 import com.xuggle.mediatool.MediaListenerAdapter;
@@ -91,21 +109,27 @@ public class VideoFrameSplitter {
 		}
 
 		private String imageToFile(BufferedImage image) {
+			if (image == null){
+				System.out.println("Image is null");
+				return "";
+			}
 			try { 
+				outputFilename = outputFilePrefix + counter + ".png"; 
 
-				outputFilename = outputFilePrefix + counter + ".jpg"; 
-				
 				Configuration conf = new Configuration();
 				conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
 				conf.addResource(new Path("/etc/alternatives/hadoop-conf/hdfs-site.xml"));
 				FileSystem fs = FileSystem.get(conf);
-				FSDataInputStream is = fs.open(new Path(inputFilename));
 
+				ByteArrayOutputStream os = new ByteArrayOutputStream();
+				ImageIO.write(image, "png", os);
+				InputStream is = new ByteArrayInputStream(os.toByteArray());
 				Path outFile = new Path("hugo/" + outputFilename);
 				if (fs.exists(outFile)){
 					fs.delete(outFile, true);
 				}
 				FSDataOutputStream out = fs.create(outFile);
+				outputFilename = outputFilePrefix + counter + ".png"; 
 
 				byte[] buffer = new byte[1024];
 				int len1 = 0;
@@ -113,7 +137,7 @@ public class VideoFrameSplitter {
 					out.write(buffer,0,len1);
 				}
 
-				out.close();
+				out.close(); 
 				counter ++;
 				return outputFilename;
 			} 
