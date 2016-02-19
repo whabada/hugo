@@ -36,7 +36,7 @@ public class Main {
 					FSDataOutputStream os = fs.create(new Path(op));
 
 					for (int i=0; i<counter; i++){
-						String line=fs.getWorkingDirectory()+"/" + VideoFrameSplitter.getOutputfilename()+i+".jpg";
+						String line=fs.getWorkingDirectory()+"/" + VideoFrameSplitter.getOutputfilename()+i+".jpg"+"\n";
 						System.out.println(line);
 						os.writeUTF(line);
 					}
