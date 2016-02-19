@@ -119,25 +119,35 @@ public class VideoDownloader {
         FileSystem fs = FileSystem.get(conf);
         System.out.println(fs.getHomeDirectory());
         
-        Path p = new Path(fs.getHomeDirectory() + "/vicra");
+        Path p = new Path(fs.getHomeDirectory() + "/hugo/videos/");
         Path path = getLastModifiedHdfsFile(fs, p);
-        FileSystem hdfs = path.getFileSystem(conf);
-        ContentSummary cSummary = hdfs.getContentSummary(path);
-        long hdfsFileLength = cSummary.getLength();
-        
-        byte[] buffer = new byte[1024];
-        int len1 = 0;
+        Boolean initialVideoFile = false;
         int videoSizeCount = 0;
-        if(is != null) {
-            while ((len1 = is.read(buffer)) > 0) {
-                videoSizeCount = videoSizeCount + len1;
+        long hdfsFileLength = 0;
+        if (path == null) {
+        	System.out.println("initial File");
+        	initialVideoFile = true;
+        	path = new Path(fs.getHomeDirectory() + "/hugo/videos/video_0.mp4");
+        } else {
+        	FileSystem hdfs = path.getFileSystem(conf);
+            ContentSummary cSummary = hdfs.getContentSummary(path);
+            hdfsFileLength = cSummary.getLength();
+            
+            byte[] buffer = new byte[1024];
+            int len1 = 0;
+            
+            if(is != null) {
+                while ((len1 = is.read(buffer)) > 0) {
+                    videoSizeCount = videoSizeCount + len1;
+                }
             }
+            is.close();
         }
-        is.close();
+        
         System.out.println("video size: " + videoSizeCount);
         String offset = Long.toString(hdfsFileLength+1); 
 
-        Path outFile = new Path("vicra/" + path.getName());
+        Path outFile = new Path(fs.getHomeDirectory() + "/hugo/videos/" + path.getName());
         fs.setReplication(outFile, (short) 1);
         FSDataOutputStream out = null;
         if(hdfsFileLength+videoSizeCount > 19328060) {
@@ -149,7 +159,12 @@ public class VideoDownloader {
         	String fileNameCount = fileNameSplit[1].split("\\.")[0];
         	
         	fileNameCount = String.valueOf(Integer.parseInt(fileNameCount) + 1);
-        	outFile = new Path("hugo/" + fileNamePrefix + "_" + fileNameCount + ".mp4");
+        	outFile = new Path(fs.getHomeDirectory() + "/hugo/videos/" + fileNamePrefix + "_" + fileNameCount + ".mp4");
+        	offset = "0";
+        	out = fs.create(outFile);
+        } else if (initialVideoFile) {
+        	System.out.println("test");
+        	outFile = path;
         	offset = "0";
         	out = fs.create(outFile);
         } else {
@@ -159,10 +174,11 @@ public class VideoDownloader {
         } 
         System.out.println("outfile: " + outFile.toString());
         
-        len1 = 0;
+        int len2 = 0;
+        byte[] buffer2 = new byte[1024];
         if(is2 != null) {
-            while ((len1 = is2.read(buffer)) > 0) {
-                out.write(buffer,0, len1);  
+            while ((len2 = is2.read(buffer2)) > 0) {
+                out.write(buffer2,0, len2);  
             }
         }
         
@@ -204,6 +220,7 @@ public class VideoDownloader {
                 }
             }
         } catch (IOException e) {
+        	System.out.println("File not found");
             e.printStackTrace();
         }
         

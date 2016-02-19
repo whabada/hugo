@@ -126,8 +126,10 @@ public class hbase extends Configured implements Tool {
 				String videokey = "";
 				if (argv.length < 1) {
 					videokey = "https://upload.wikimedia.org/wikipedia/commons/4/4a/Anguilla-shoal-bay.ogg";
+					videoBlockSize = "40";
 				} else {
 					videokey = argv[1];
+					videoBlockSize = argv[2];
 				}
 				
 				String[] videoInformation = VideoDownloader.videoToHdfs(videokey);
@@ -309,7 +311,8 @@ public class hbase extends Configured implements Tool {
 		System.setProperty("java.class.path", "/usr/lib/hbase/client/*:/home/cloudera/.m2/*:.");
 		
 		//String[] data = new String[] {"getImagesOfVideo", "https"};
-		String[] data = new String[] {"getVideoRecord", "https://upload.wikimedia.org/wikipedia/commons/4/4a/Anguilla-shoal-bay.ogg", "40"};
+		String[] data = new String[] {"addVideoRecord", "https://upload.wikimedia.org/wikipedia/commons/4/4a/Anguilla-shoal-bay.ogg", "40"};
+		//String[] data = new String[] {"getVideoRecord", "https://upload.wikimedia.org/wikipedia/commons/4/4a/Anguilla-shoal-bay.ogg", "40"};
 		//String[] data = new String[] {"addImageRecord", "https://upload.wikimedia.org/wikipedia/commons/4/4a/Anguilla-shoal-bay.ogg", "9", "0;0;0", "0;0;0"};
 		
 		int ret = ToolRunner.run(new hbase(), data);
