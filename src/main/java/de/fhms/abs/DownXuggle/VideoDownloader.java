@@ -31,7 +31,8 @@ public class VideoDownloader {
 		String fileName = splitUrl[splitUrl.length -1];
 		InputStream is = u.openStream();
 		
-		vidFileName = fileName;
+		vidFileName = fileName.split("\\.")[0];
+		System.out.println(vidFileName);
 		//String storagePath = Environment.getExternalStorageDirectory().toString();
 		//String storagePath = "/home/cloudera/Videos/";
 		//File f = new File(storagePath,fileName);
