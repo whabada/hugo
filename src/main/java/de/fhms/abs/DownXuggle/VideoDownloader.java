@@ -32,7 +32,7 @@ public class VideoDownloader {
 		InputStream is = u.openStream();
 		
 		vidFileName = fileName.split("\\.")[0];
-		System.out.println(vidFileName);
+		//System.out.println(vidFileName);
 		//String storagePath = Environment.getExternalStorageDirectory().toString();
 		//String storagePath = "/home/cloudera/Videos/";
 		//File f = new File(storagePath,fileName);
