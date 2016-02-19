@@ -1,4 +1,4 @@
-package de.fhms.abs;
+package de.fhms.abs.mrJobs;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
@@ -25,7 +25,7 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 
-public class ColorAnalyzer extends Configured implements Tool {
+public class BlocksizeMR extends Configured implements Tool {
 
 	private final static DoubleWritable one = new DoubleWritable(1);
 
@@ -72,15 +72,14 @@ public class ColorAnalyzer extends Configured implements Tool {
 						g = pixel.getGreen(); // gruen
 						b = pixel.getBlue(); // blau
 
-						Text RKey =new Text("R "+String.valueOf(r)+ "," + String.valueOf(sumPixel));
+			/*			Text RKey =new Text("R "+String.valueOf(r)+ "," + String.valueOf(sumPixel));
 						Text GKey =new Text("G "+String.valueOf(g)+ "," + String.valueOf(sumPixel));
-						Text BKey =new Text("B "+String.valueOf(b)+ "," + String.valueOf(sumPixel));
+						Text BKey =new Text("B "+String.valueOf(b)+ "," + String.valueOf(sumPixel)); */
 
-						/** TODO Blocks kommen spaeter. Wie dann?
-						Text RKey =new Text("R"+blocks(sumr)+ "," + String.valueOf(sumPixel));
-						Text GKey =new Text("G"+blocks(sumg)+ "," + String.valueOf(sumPixel));
-						Text BKey =new Text("B"+blocks(sumb)+ "," + String.valueOf(sumPixel));
-						 */
+						Text RKey =new Text("R "+blocks(r)+ "," + String.valueOf(sumPixel));
+						Text GKey =new Text("G "+blocks(g)+ "," + String.valueOf(sumPixel));
+						Text BKey =new Text("B "+blocks(b)+ "," + String.valueOf(sumPixel));
+						 
 						context.write(RKey, one);
 						context.write(GKey, one);
 						context.write(BKey, one); 
@@ -177,13 +176,13 @@ public class ColorAnalyzer extends Configured implements Tool {
 
 		int grenzeOben =10;
 		int grenzeUnten=0;
-		for (int i=0; i<=255; i+=10){
 
-			if(k==0){
-				return result = String.valueOf(0);
-			}
+		if(k==0){
+			return result = String.valueOf(0);
+		}
+		for (int i=1; i<=255; i+=10){
 
-			else if(k<grenzeOben && k>=grenzeUnten){
+			if(k<grenzeOben && k>=grenzeUnten){
 				return result = String.valueOf(i);
 			}
 
@@ -211,7 +210,7 @@ public class ColorAnalyzer extends Configured implements Tool {
 
 		Job job = Job.getInstance(conf);
 	//	Job job = new Job(conf, "color Analyzer");
-		job.setJarByClass(ColorAnalyzer.class);
+		job.setJarByClass(BlocksizeMR.class);
 
 		job.setMapperClass(ColorAnalyzerMapper.class);
 		job.setReducerClass(AverageColorReducer.class);
@@ -234,7 +233,7 @@ public class ColorAnalyzer extends Configured implements Tool {
 			System.out.println("input and output missing!");
 		} 
 
-		int res = ToolRunner.run(new Configuration(), new ColorAnalyzer(), args);
+		int res = ToolRunner.run(new Configuration(), new BlocksizeMR(), args);
 		System.exit(res);
 	} 
 }
