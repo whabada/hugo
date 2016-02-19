@@ -1,6 +1,7 @@
 package de.fhms.abs.hbase;
 
 import de.fhms.abs.*;
+import de.fhms.abs.DownXuggle.VideoDownloader;
 import de.fhms.abs.outputgenerator.generateImage;
 
 import java.nio.ByteBuffer;
