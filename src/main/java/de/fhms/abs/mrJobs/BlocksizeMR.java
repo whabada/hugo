@@ -233,21 +233,24 @@ public class BlocksizeMR extends Configured implements Tool {
 		if (args.length <2){
 			System.out.println("input and output missing!");
 		} 
-		FileSystem fs = FileSystem.get(new Configuration());
+		/*			FileSystem fs = FileSystem.get(new Configuration());
 		Path inputPath = new Path (fs.getWorkingDirectory()+"/hugo"+"/pics"+"/links.txt");
-		Path outPath = new Path (fs.getWorkingDirectory()+"/hugo/");
-		FSDataInputStream in = fs.open(inputPath);
+		Path outPath = new Path (fs.getWorkingDirectory()+"/hugo");
+	FSDataInputStream in = fs.open(inputPath);
 		int counter = 0;
 		BufferedReader reader = new BufferedReader(new InputStreamReader(in));
 
 		String line = reader.readLine(); 
 		while (line != null){
-			String [] array = new String[]{line, outPath.toString()+String.valueOf(counter)+".txt"};
+			String [] array = new String[]{line, outPath.toString()+"/"+String.valueOf(counter)+".txt"};
 			int res = ToolRunner.run(new Configuration(), new BlocksizeMR(), array);
 			counter ++;
 
 		}
 		//	System.exit(res);
-		reader.close();
+		reader.close(); */
+		
+		int res = ToolRunner.run(new Configuration(), new BlocksizeMR(), args);
+		System.exit(res);
 	}
 }

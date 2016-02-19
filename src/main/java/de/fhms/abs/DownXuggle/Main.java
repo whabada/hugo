@@ -1,6 +1,8 @@
 package de.fhms.abs.DownXuggle;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -34,14 +36,16 @@ public class Main {
 					counter = VideoFrameSplitter.getCounter();
 					String op = VideoFrameSplitter.getOutputfilename()+"/links.txt";
 					FSDataOutputStream os = fs.create(new Path(op));
+					BufferedWriter oFile = new BufferedWriter(new OutputStreamWriter(os));
 
 					for (int i=0; i<counter; i++){
-						String line=fs.getWorkingDirectory()+"/" + VideoFrameSplitter.getOutputfilename()+i+".jpg"+"\n";
+						String line = String.format(fs.getWorkingDirectory()+"/" + VideoFrameSplitter.getOutputfilename()+i+".jpg" + "\n",
+						System.getProperty("line.separator"));
+						oFile.write(line);
 						System.out.println(line);
-						os.writeUTF(line);
 					}
-					
-					os.close();
+					//os.close();
+					oFile.close();
 
 				}
 
