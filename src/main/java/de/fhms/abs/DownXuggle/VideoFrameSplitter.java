@@ -92,7 +92,7 @@ public class VideoFrameSplitter {
 
 		private String imageToFile(BufferedImage image) {
 			try { 
-				outputFilename = outputFilePrefix + counter + ".jpg"; 
+				outputFilename = outputFilePrefix + counter + ".png"; 
 				
 				Configuration conf = new Configuration();
 				conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
@@ -128,6 +128,6 @@ public class VideoFrameSplitter {
 	}
 
 	public static String getOutputfilename(){
-		return fileNameForReturn;
+		return "hugo/"+outputFilePrefix;
 	}
 }

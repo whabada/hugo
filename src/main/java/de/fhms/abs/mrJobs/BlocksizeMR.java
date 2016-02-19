@@ -2,10 +2,13 @@ package de.fhms.abs.mrJobs;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 
 import javax.imageio.ImageIO;
 import javax.imageio.stream.ImageInputStream;
+import javax.imageio.stream.ImageOutputStream;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
@@ -24,6 +27,8 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
+import de.fhms.abs.DownXuggle.VideoFrameSplitter;
+
 
 public class BlocksizeMR extends Configured implements Tool {
 
@@ -34,7 +39,8 @@ public class BlocksizeMR extends Configured implements Tool {
 		/**
 		 * Die Mapper Funktion erhaelt eine txt Datei, welche eine url zum Bild enthaelt. 
 		 * Es wird die die Farbe saemtlicher Pixel eingeladenen Bildes analysiert, 
-		 * in dem fuer jeden Farbwert gezaehlt wird, wie haeufig die Farbe erscheint. 
+		 * in dem fuer jeden Farbwert gezaehlt wird, wie haeufig die Farbe erscheint.  
+		 * Diese Werte sind in Farbbloecke sortiert
 		 * Die Funktion funktioniert nur, wenn das Bild nicht null ist und groeßer als 1x1 ist.
 		 *  
 		 * @param key Nummer des Frames 
@@ -71,15 +77,12 @@ public class BlocksizeMR extends Configured implements Tool {
 						r = pixel.getRed(); //rot
 						g = pixel.getGreen(); // gruen
 						b = pixel.getBlue(); // blau
+						//TODO: Blocksize weitergeben
+						Text RKey =new Text("R "+blocks(r,1)+ "," + String.valueOf(sumPixel));
+						Text GKey =new Text("G "+blocks(g,1)+ "," + String.valueOf(sumPixel));
+						Text BKey =new Text("B "+blocks(b,1)+ "," + String.valueOf(sumPixel));
 
-			/*			Text RKey =new Text("R "+String.valueOf(r)+ "," + String.valueOf(sumPixel));
-						Text GKey =new Text("G "+String.valueOf(g)+ "," + String.valueOf(sumPixel));
-						Text BKey =new Text("B "+String.valueOf(b)+ "," + String.valueOf(sumPixel)); */
 
-						Text RKey =new Text("R "+blocks(r)+ "," + String.valueOf(sumPixel));
-						Text GKey =new Text("G "+blocks(g)+ "," + String.valueOf(sumPixel));
-						Text BKey =new Text("B "+blocks(b)+ "," + String.valueOf(sumPixel));
-						 
 						context.write(RKey, one);
 						context.write(GKey, one);
 						context.write(BKey, one); 
@@ -171,29 +174,27 @@ public class BlocksizeMR extends Configured implements Tool {
 	 * @param k Zahl, die geprueft werden soll
 	 * @return untere grenze, in der eine zahl liegt
 	 */
-	public static String blocks(long k){
+	public static String blocks(long k, int b){
 		String result = "";
 
-		int grenzeOben =10;
+		int grenzeOben =b;
 		int grenzeUnten=0;
 
 		if(k==0){
 			return result = String.valueOf(0);
 		}
-		for (int i=1; i<=255; i+=10){
+		for (int i=0; i<=255; i+=b){
 
 			if(k<grenzeOben && k>=grenzeUnten){
 				return result = String.valueOf(i);
 			}
-
-			grenzeOben+=10;
-			grenzeUnten+=10;
+			grenzeOben+=b;
+			grenzeUnten+=b;
 		}
-
 		return result;
 	}
-	
-//	@Override
+
+	//	@Override
 	public int run(String[] args) throws Exception {
 		Configuration conf = new Configuration();
 		Path inputPath = new Path (args[0]);
@@ -209,7 +210,7 @@ public class BlocksizeMR extends Configured implements Tool {
 		}
 
 		Job job = Job.getInstance(conf);
-	//	Job job = new Job(conf, "color Analyzer");
+		//	Job job = new Job(conf, "color Analyzer");
 		job.setJarByClass(BlocksizeMR.class);
 
 		job.setMapperClass(ColorAnalyzerMapper.class);
@@ -232,8 +233,21 @@ public class BlocksizeMR extends Configured implements Tool {
 		if (args.length <2){
 			System.out.println("input and output missing!");
 		} 
+		FileSystem fs = FileSystem.get(new Configuration());
+		Path inputPath = new Path (fs.getWorkingDirectory()+"/hugo"+"/pics"+"/links.txt");
+		Path outPath = new Path (fs.getWorkingDirectory()+"/hugo/");
+		FSDataInputStream in = fs.open(inputPath);
+		int counter = 0;
+		BufferedReader reader = new BufferedReader(new InputStreamReader(in));
 
-		int res = ToolRunner.run(new Configuration(), new BlocksizeMR(), args);
-		System.exit(res);
-	} 
+		String line = reader.readLine(); 
+		while (line != null){
+			String [] array = new String[]{line, outPath.toString()+String.valueOf(counter)+".txt"};
+			int res = ToolRunner.run(new Configuration(), new BlocksizeMR(), array);
+			counter ++;
+
+		}
+		//	System.exit(res);
+		reader.close();
+	}
 }

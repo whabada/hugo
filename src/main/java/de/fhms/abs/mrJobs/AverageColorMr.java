@@ -25,6 +25,7 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 
+//TODO Klasse obsolet
 public class AverageColorMr extends Configured implements Tool {
 
 	private final static DoubleWritable one = new DoubleWritable(1);
