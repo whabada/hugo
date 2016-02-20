@@ -8,7 +8,6 @@ import java.io.InputStreamReader;
 
 import javax.imageio.ImageIO;
 import javax.imageio.stream.ImageInputStream;
-import javax.imageio.stream.ImageOutputStream;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
@@ -21,13 +20,11 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
-
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
-
-import de.fhms.abs.DownXuggle.VideoFrameSplitter;
 
 
 public class BlocksizeMR extends Configured implements Tool {
@@ -212,7 +209,9 @@ public class BlocksizeMR extends Configured implements Tool {
 		Job job = Job.getInstance(conf);
 		//	Job job = new Job(conf, "color Analyzer");
 		job.setJarByClass(BlocksizeMR.class);
-
+		
+        job.setInputFormatClass(TextInputFormat.class);
+        
 		job.setMapperClass(ColorAnalyzerMapper.class);
 		job.setReducerClass(AverageColorReducer.class);
 		job.setCombinerClass(AverageColorCombiner.class);
@@ -233,10 +232,10 @@ public class BlocksizeMR extends Configured implements Tool {
 		if (args.length <2){
 			System.out.println("input and output missing!");
 		} 
-		/*			FileSystem fs = FileSystem.get(new Configuration());
-		Path inputPath = new Path (fs.getWorkingDirectory()+"/hugo"+"/pics"+"/links.txt");
+		FileSystem fs = FileSystem.get(new Configuration());
+		Path inputPath = new Path (fs.getWorkingDirectory()+"/hugo"+"/Frames"+"/links.txt");
 		Path outPath = new Path (fs.getWorkingDirectory()+"/hugo");
-	FSDataInputStream in = fs.open(inputPath);
+		FSDataInputStream in = fs.open(inputPath);
 		int counter = 0;
 		BufferedReader reader = new BufferedReader(new InputStreamReader(in));
 
@@ -248,9 +247,9 @@ public class BlocksizeMR extends Configured implements Tool {
 
 		}
 		//	System.exit(res);
-		reader.close(); */
-		
+		reader.close(); 
+		/*
 		int res = ToolRunner.run(new Configuration(), new BlocksizeMR(), args);
-		System.exit(res);
+		System.exit(res); */
 	}
 }
