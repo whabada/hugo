@@ -1,4 +1,4 @@
-package de.fhms.abs;
+package de.fhms.abs.mrJobs;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
@@ -25,7 +25,8 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 
-public class ColorAnalyzer extends Configured implements Tool {
+//TODO Klasse obsolet
+public class AverageColorMr extends Configured implements Tool {
 
 	private final static DoubleWritable one = new DoubleWritable(1);
 
@@ -76,11 +77,6 @@ public class ColorAnalyzer extends Configured implements Tool {
 						Text GKey =new Text("G "+String.valueOf(g)+ "," + String.valueOf(sumPixel));
 						Text BKey =new Text("B "+String.valueOf(b)+ "," + String.valueOf(sumPixel));
 
-						/** TODO Blocks kommen spaeter. Wie dann?
-						Text RKey =new Text("R"+blocks(sumr)+ "," + String.valueOf(sumPixel));
-						Text GKey =new Text("G"+blocks(sumg)+ "," + String.valueOf(sumPixel));
-						Text BKey =new Text("B"+blocks(sumb)+ "," + String.valueOf(sumPixel));
-						 */
 						context.write(RKey, one);
 						context.write(GKey, one);
 						context.write(BKey, one); 
@@ -167,33 +163,7 @@ public class ColorAnalyzer extends Configured implements Tool {
 			context.write(key, new Text(String.valueOf(result)));
 		}
 	}
-	/**
-	 * Gibt einen Intervall aus, in der die Zahl liegt. bspw. liegt die zahl 15 zwischen 10-20 wird 10 zurueck gegebe
-	 * @param k Zahl, die geprueft werden soll
-	 * @return untere grenze, in der eine zahl liegt
-	 */
-	public static String blocks(long k){
-		String result = "";
 
-		int grenzeOben =10;
-		int grenzeUnten=0;
-		for (int i=0; i<=255; i+=10){
-
-			if(k==0){
-				return result = String.valueOf(0);
-			}
-
-			else if(k<grenzeOben && k>=grenzeUnten){
-				return result = String.valueOf(i);
-			}
-
-			grenzeOben+=10;
-			grenzeUnten+=10;
-		}
-
-		return result;
-	}
-	
 //	@Override
 	public int run(String[] args) throws Exception {
 		Configuration conf = new Configuration();
@@ -210,8 +180,7 @@ public class ColorAnalyzer extends Configured implements Tool {
 		}
 
 		Job job = Job.getInstance(conf);
-	//	Job job = new Job(conf, "color Analyzer");
-		job.setJarByClass(ColorAnalyzer.class);
+		job.setJarByClass(AverageColorMr.class);
 
 		job.setMapperClass(ColorAnalyzerMapper.class);
 		job.setReducerClass(AverageColorReducer.class);
@@ -234,7 +203,8 @@ public class ColorAnalyzer extends Configured implements Tool {
 			System.out.println("input and output missing!");
 		} 
 
-		int res = ToolRunner.run(new Configuration(), new ColorAnalyzer(), args);
+		//TODO hier muss dann eine Forschleife hin, die sich alle Bilder holt und für jedes Bild einen Outbut generieren
+		int res = ToolRunner.run(new Configuration(), new AverageColorMr(), args);
 		System.exit(res);
 	} 
 }
