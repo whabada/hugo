@@ -8,6 +8,7 @@ import java.nio.ByteBuffer;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.TableName;
@@ -35,20 +36,20 @@ import java.util.List;
 public class hbase extends Configured implements Tool {
 
 	/** The identifier for the application table. */
-	private static final TableName VIDEO_DATA = TableName.valueOf("vmd");
-	private static final TableName IMAGE_DATA = TableName.valueOf("imageData");
+	public static final TableName VIDEO_DATA = TableName.valueOf("vmd");
+	public static final TableName IMAGE_DATA = TableName.valueOf("imageData");
 	/** The name of the column family used by the application. */
-	private static final byte[] VIDEO_DATA_CF1 = Bytes.toBytes("metadata");
-	private static final byte[] VIDEO_DATA_CF2 = Bytes.toBytes("group");
-	private static final byte[] IMAGE_DATA_CF1 = Bytes.toBytes("avarageColor");
-	private static final byte[] IMAGE_DATA_CF2 = Bytes.toBytes("dominantColor");
-	private static Connection con = null;
+	public static final byte[] VIDEO_DATA_CF1 = Bytes.toBytes("metadata");
+	public static final byte[] VIDEO_DATA_CF2 = Bytes.toBytes("group");
+	public static final byte[] IMAGE_DATA_CF1 = Bytes.toBytes("avarageColor");
+	public static final byte[] IMAGE_DATA_CF2 = Bytes.toBytes("dominantColor");
+	public static Connection con = null;
 
-	private static String videoBlockSize = "";
-	private static Boolean blockSizeAnalyzed = false;
+	public static String videoBlockSize = "";
+	public static Boolean blockSizeAnalyzed = false;
 	
-	private static int outputHeight = 0;
-	private static int outputWidth = 0;
+	public static int outputHeight = 0;
+	public static int outputWidth = 0;
 
 	public int run(String[] argv) throws Exception {
 		setConf(HBaseConfiguration.create(getConf()));
@@ -56,6 +57,7 @@ public class hbase extends Configured implements Tool {
 		try {
 			// establish the connection to the cluster.
 			con = ConnectionFactory.createConnection(getConf());
+			
 
 			if (argv[0].equals("getVideoRecord")) {
 				//#################################################################################################
@@ -270,9 +272,11 @@ public class hbase extends Configured implements Tool {
 							blue = new Integer(new String(kv.getValue()));
 						}
 						if (count2 == 3) {
-							for (int j = 0; j < pixels; j = j+100) {
+							for (int j = 0; j < pixels; j = j+outputWidth) {
 								durchlaufe++;
+								
 								data[i+j] = (red << 16) | (green << 8) | blue;
+								System.out.println(data[i+j]);
 							}
 							i++;
 							count2 = 0;
@@ -314,7 +318,7 @@ public class hbase extends Configured implements Tool {
 		//String[] data = new String[] {"getImagesOfVideo", "https"};
 		String[] data = new String[] {"addVideoRecord", "https://upload.wikimedia.org/wikipedia/commons/4/4a/Anguilla-shoal-bay.ogg", "40"};
 		//String[] data = new String[] {"getVideoRecord", "https://upload.wikimedia.org/wikipedia/commons/4/4a/Anguilla-shoal-bay.ogg", "40"};
-		//String[] data = new String[] {"addImageRecord", "https://upload.wikimedia.org/wikipedia/commons/4/4a/Anguilla-shoal-bay.ogg", "9", "0;0;0", "0;0;0"};
+		//String[] data = new String[] {"addImageRecord", "https://upload.wikimedia.org/wikipedia/commons/4/4a/Anguilla-shoal-bay.ogg", "19", "255;255;255", "0;0;0"};
 		
 		int ret = ToolRunner.run(new hbase(), data);
 		System.exit(ret);
