@@ -4,7 +4,6 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.sql.Timestamp;
 import javax.imageio.ImageIO;
 
@@ -23,7 +22,7 @@ import com.xuggle.xuggler.Global;
 
 public class VideoFrameSplitter {
 
-	public static final double SECONDS_BETWEEN_FRAMES = 5;
+	public static final double SECONDS_BETWEEN_FRAMES = 1;
 	/*TODO Anpassung an HDFS: Das Einlesen von einer File aus dem HDFS funktioniert nicht,
 	 * Fehler in Line 60, Ursprung in Line 48, wenn man einen HDFS Link einsetzt.
 	 */
@@ -31,7 +30,6 @@ public class VideoFrameSplitter {
 	private static String outputFilePrefix;
 	private static int counter; 
 	private static String outputFilename;
-	private static String fileNameForReturn;
 	private static String outputFilePath;
 
 	//Namen des Videos holen
