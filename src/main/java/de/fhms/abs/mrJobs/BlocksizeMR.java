@@ -3,17 +3,26 @@ package de.fhms.abs.mrJobs;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 import javax.imageio.ImageIO;
 import javax.imageio.stream.ImageInputStream;
+import javax.servlet.ServletConfig;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hdfs.tools.GetConf;
 import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
@@ -25,7 +34,6 @@ import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
-
 
 public class BlocksizeMR extends Configured implements Tool {
 
@@ -51,13 +59,18 @@ public class BlocksizeMR extends Configured implements Tool {
 		public void map(LongWritable key, Text url, Context context) throws IOException, InterruptedException {
 
 			BufferedImage image = null;
+
 			FileSystem fs = FileSystem.get(context.getConfiguration());
-			Path inputPath = new Path(url.toString());
 			try { //Bild einladen
+				Path inputPath = new Path(new URI(url.toString()));
+				System.out.println(inputPath.toString());
 				FSDataInputStream in = fs.open(inputPath);
 				ImageInputStream imageInput = ImageIO.createImageInputStream(in);
 				image = ImageIO.read(imageInput); 
 			} catch (IOException e) {
+				System.out.println(e.getMessage());
+			} catch (URISyntaxException e) {
+				e.printStackTrace();
 				System.out.println(e.getMessage());
 			} 
 
@@ -209,9 +222,9 @@ public class BlocksizeMR extends Configured implements Tool {
 		Job job = Job.getInstance(conf);
 		//	Job job = new Job(conf, "color Analyzer");
 		job.setJarByClass(BlocksizeMR.class);
-		
-        job.setInputFormatClass(TextInputFormat.class);
-        
+
+		job.setInputFormatClass(TextInputFormat.class);
+
 		job.setMapperClass(ColorAnalyzerMapper.class);
 		job.setReducerClass(AverageColorReducer.class);
 		job.setCombinerClass(AverageColorCombiner.class);
@@ -227,29 +240,118 @@ public class BlocksizeMR extends Configured implements Tool {
 		return job.waitForCompletion(true) ? 0 : 1;
 	}
 
+	/**
+	 * Mein Mathode fuer den MR Job. Es wird fuer jede Zeile der Links.txt ein MapReduceJob gestartet 
+	 * und ein OutputOrdner angeben.
+	 * @param args: sind leer
+	 * @throws Exception
+	 */
 	public static void main(String[] args) throws Exception {
 
-		if (args.length <2){
+		/*	if (args.length <2){
 			System.out.println("input and output missing!");
-		} 
-		FileSystem fs = FileSystem.get(new Configuration());
-		Path inputPath = new Path (fs.getWorkingDirectory()+"/hugo"+"/Frames"+"/links.txt");
+		} */
+		Configuration conf = new Configuration();
+		conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
+		conf.addResource(new Path("/etc/alternatives/hadoop-conf/hdfs-site.xml"));
+		FileSystem fs = FileSystem.get(conf);
+
+
+		//TODO Wie komme ich an das Directory vom Video? Ich kann das ja nicht statisch darin lassen wir hier
+		//Genauer gesagt muss ich "anguilla ..." durch eine variable ersetzen. 
+		Path inputPath = new Path (fs.getWorkingDirectory()+"/hugo"+"/Frames/"
+				+ "Anguilla-shoal-bay-2016-02-20-06-55-45-168" +"/links.txt");
+
 		Path outPath = new Path (fs.getWorkingDirectory()+"/hugo");
 		FSDataInputStream in = fs.open(inputPath);
 		int counter = 0;
 		BufferedReader reader = new BufferedReader(new InputStreamReader(in));
 
 		String line = reader.readLine(); 
+		int res=-1;
 		while (line != null){
-			String [] array = new String[]{line, outPath.toString()+"/"+String.valueOf(counter)+".txt"};
-			int res = ToolRunner.run(new Configuration(), new BlocksizeMR(), array);
-			counter ++;
 
+			//	String [] pathArray = line.split("/");
+
+			String [] tempDir = createTmpDir(line);
+			if(!tempDir[0].equals("") && !tempDir[1].equals("")){
+				String newPathStr = tempDir[0];
+
+				String op = newPathStr+".txt";
+				//String op = line+".txt";
+				FSDataOutputStream os = fs.create(new Path(op));
+				BufferedWriter oFile = new BufferedWriter(new OutputStreamWriter(os));
+
+				oFile.write(line);
+				System.out.println(line);
+				oFile.flush();
+				oFile.close();
+
+				String [] array = new String[]{op, outPath.toString()+"/output/"+String.valueOf(counter)};
+				res = ToolRunner.run(new Configuration(), new BlocksizeMR(), array);
+				counter ++;
+				String delDirStr = tempDir[1];
+				fs.delete(new Path(delDirStr), true);
+				/*	if (fs.delete(new Path(delDirStr), true)){
+				System.out.println("Delete successful");
+			}
+			else {
+				System.out.println("Delete not successful");
+			} */
+
+				line = reader.readLine();
+			}
 		}
-		//	System.exit(res);
-		reader.close(); 
-		/*
+		System.exit(res);
+
+		reader.close();  
+		/*			
 		int res = ToolRunner.run(new Configuration(), new BlocksizeMR(), args);
 		System.exit(res); */
+	}
+	/**
+	 * Diese Methode schiebt den Order "tmp" vor dem Unterordner Frames und gibt ebenso das erstellte Directory zurueck
+	 * @param url: String Datei mit dem Verzeichnisnamen
+	 * @return String [] bestehend aus dem String neuen Pfadnamen, allerdings nur das Wort Frames im Pfad enthalten ist 
+	 * sowie String delDir, welcher den zu löschenden Pfad angibt.
+	 */
+	public static String[] createTmpDir (String url){
+
+		String [] pathArray = url.split("/");
+		int pos = -1;
+		for (int i=0; i<pathArray.length; i++){
+			if (pathArray[i].contains("Frames")){
+				pos = i;
+			}
+		}
+		if (pos != -1){
+			String[] newPath = new String [pathArray.length+1];
+			String delDirStr = "";
+			boolean posReached = false;
+			for (int i=0; i<newPath.length; i++){
+				if (i == pos){
+					posReached = true;
+					newPath[i] = "tmp/";
+					delDirStr += newPath[i];
+				}
+				else if (posReached == true){
+					newPath[i] = pathArray[i-1];
+					if (i != newPath.length-1){
+						newPath[i]+="/";
+					}
+				}
+				else {
+					newPath[i] = pathArray[i]+"/";
+					delDirStr += newPath[i];
+				}
+			}
+			String newPathStr = "";
+			System.out.println(delDirStr);
+			for (int i=0; i <newPath.length; i++){
+				newPathStr += newPath[i];
+			}
+			return new String []{newPathStr, delDirStr};
+		}
+		return new String []{"",""};
 	}
 }
