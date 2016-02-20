@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.sql.Timestamp;
 
 import javax.imageio.ImageIO;
 import javax.imageio.stream.ImageOutputStream;
@@ -45,6 +46,7 @@ public class VideoFrameSplitter {
 	private static String outputFilename;
 	private static String fileNameForReturn;
 	private static String outputFilePath;
+	private static Timestamp getTimeStamp = new Timestamp(System.currentTimeMillis());
 
 	//Namen des Videos holen
 	private static String videoFileName = VideoDownloader.getVideoFilename();
@@ -119,6 +121,8 @@ public class VideoFrameSplitter {
 			try { 
 				outputFilename = outputFilePrefix + videoFileName + counter + ".png"; 
 				outputFilePath = "hugo/";
+				
+				System.out.println(getTimeStamp);
 
 				Configuration conf = new Configuration();
 				conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
@@ -136,6 +140,8 @@ public class VideoFrameSplitter {
 				}
 				FSDataOutputStream out = fs.create(outFile);
 				outputFilename = outputFilePrefix + counter + ".png"; 
+				
+				System.out.println(outputFilePath);
 
 				byte[] buffer = new byte[1024];
 				int len1 = 0;
