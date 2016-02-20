@@ -27,15 +27,12 @@ public class generateImage {
 	    }
 	    
 	    BufferedImage image = getImageFromArray(data, width, height);
-	    
 	}
 
 	public static BufferedImage getImageFromArray(int[] pixels, int width, int height) throws IOException {
 		System.out.println(width * height);
-        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        //WritableRaster raster = (WritableRaster) image.getData();
-        //raster.setPixels(0,0,width,height,pixels);
-        image.setRGB(0, 0, width, height, pixels, 0, 8);
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        image.setRGB(0, 0, width, height, pixels, 0, 0);
         File outputfile = new File("/home/cloudera/Pictures/image.jpg");
 	    ImageIO.write(image, "jpg", outputfile);
         return image;
