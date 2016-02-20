@@ -40,7 +40,7 @@ public class hbase extends Configured implements Tool {
 	public static final TableName IMAGE_DATA = TableName.valueOf("imageData");
 	/** The name of the column family used by the application. */
 	public static final byte[] VIDEO_DATA_CF1 = Bytes.toBytes("metadata");
-	public static final byte[] VIDEO_DATA_CF2 = Bytes.toBytes("group");
+	public static final byte[] VIDEO_DATA_CF2 = Bytes.toBytes("block");
 	public static final byte[] IMAGE_DATA_CF1 = Bytes.toBytes("avarageColor");
 	public static final byte[] IMAGE_DATA_CF2 = Bytes.toBytes("dominantColor");
 	public static Connection con = null;

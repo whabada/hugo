@@ -46,7 +46,6 @@ public class VideoFrameSplitter {
 	private static String outputFilename;
 	private static String fileNameForReturn;
 	private static String outputFilePath;
-	private static Timestamp getTimeStamp = new Timestamp(System.currentTimeMillis());
 
 	//Namen des Videos holen
 	private static String videoFileName = VideoDownloader.getVideoFilename();
@@ -61,10 +60,18 @@ public class VideoFrameSplitter {
 			(long)(Global.DEFAULT_PTS_PER_SECOND * SECONDS_BETWEEN_FRAMES);
 
 	public static void split (String[] args) {
+		
+		//TimeStamp zur eindeutigkeit der Frames
+		String getTimeStamp = new Timestamp(System.currentTimeMillis()).toString();
+		//TimeStamp bereinigen
+		getTimeStamp = getTimeStamp.replaceAll(":" , "-");
+		getTimeStamp = getTimeStamp.replaceAll(" ", "-");
+		getTimeStamp = getTimeStamp.replaceAll("\\.", "-"); 
 
 		IMediaReader mediaReader = ToolFactory.makeReader(inputFilename);
 		inputFilename = args[0];
-		outputFilePrefix = args[1];
+		outputFilePrefix = args[1] + videoFileName + "-" + getTimeStamp + "/";
+
 		//initialisiere counter
 		counter =0;
 
@@ -121,8 +128,6 @@ public class VideoFrameSplitter {
 			try { 
 				outputFilename = outputFilePrefix + videoFileName + counter + ".png"; 
 				outputFilePath = "hugo/";
-				
-				System.out.println(getTimeStamp);
 
 				Configuration conf = new Configuration();
 				conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
@@ -140,8 +145,6 @@ public class VideoFrameSplitter {
 				}
 				FSDataOutputStream out = fs.create(outFile);
 				outputFilename = outputFilePrefix + counter + ".png"; 
-				
-				System.out.println(outputFilePath);
 
 				byte[] buffer = new byte[1024];
 				int len1 = 0;

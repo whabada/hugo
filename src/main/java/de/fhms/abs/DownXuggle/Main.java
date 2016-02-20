@@ -1,7 +1,5 @@
 package de.fhms.abs.DownXuggle;
 
-import java.sql.Timestamp;
-
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -18,7 +16,6 @@ public class Main {
 		String vidPath;
 		int counter;
 		String outPath;
-		Timestamp getTimeStamp = new Timestamp(System.currentTimeMillis());
 		
 		if (args.length < -1){ //TODO Anpassen wenn Link uebergeben wird
 			System.out.println("input missing");
@@ -31,7 +28,7 @@ public class Main {
 			String homePath= fs.getWorkingDirectory().toString();
 
 			if (vidPath != null && !vidPath.equals("")){
-				outPath = "Frames/" + VideoDownloader.getVideoFilename() + getTimeStamp;
+				outPath = "Frames/";
 				String[] inOut = new String[]{homePath+"/"+vidPath, outPath};
 				VideoFrameSplitter.split(inOut);
 				System.out.println("Success.");
