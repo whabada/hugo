@@ -171,12 +171,12 @@ public class BlocksizeMR extends Configured implements Tool {
 		 * @return key: R, G oder B 
 		 * @return text: resultValue
 		 */
-@Override
-protected void setup(Reducer<Text, DoubleWritable, ImmutableBytesWritable, Mutation>.Context context)
-		throws IOException, InterruptedException {
-		Configuration conf = HBaseConfiguration.create(context.getConfiguration());
-		tmpKey = conf.get("keyDB"); 
-}
+		@Override
+		protected void setup(Reducer<Text, DoubleWritable, ImmutableBytesWritable, Mutation>.Context context)
+				throws IOException, InterruptedException {
+			Configuration conf = HBaseConfiguration.create(context.getConfiguration());
+			tmpKey = conf.get("keyDB"); 
+		}
 		@Override
 		protected void reduce(Text key, Iterable<DoubleWritable> values,Context context)
 				throws IOException, InterruptedException {
@@ -186,11 +186,6 @@ protected void setup(Reducer<Text, DoubleWritable, ImmutableBytesWritable, Mutat
 				result += val.get();
 			}
 			String resultStr = String.valueOf(result);
-			
-
-			//	Put put = new Put(Bytes.toBytes(keyDB));
-			//	String urlTest = "https://upload.wikimedia.org/wikipedia/commons/4/4a/Anguilla-shoal-bay.ogg_0000001";
-			//	Put put = new Put (Bytes.toBytes(urlTest));
 			Put put = new Put (Bytes.toBytes(tmpKey));
 			put.addColumn(Bytes.toBytes("averageColor"), Bytes.toBytes(key.toString()), Bytes.toBytes(resultStr));
 			put.addColumn(Bytes.toBytes("dominantColor"), Bytes.toBytes(key.toString()), Bytes.toBytes(0));
@@ -229,21 +224,8 @@ protected void setup(Reducer<Text, DoubleWritable, ImmutableBytesWritable, Mutat
 		Path inputPath = new Path (args[0]);
 
 		Configuration conf = HBaseConfiguration.create(getConf());
-		conf.set("keyDB", args[1]);
+		conf.set("keyDB", args[1]); //DBKey aus Conf abfragen
 
-		/*		Path outputPath = new Path(args[1]); */
-
-		/* TODO brauche ich das? 
-		 * 		conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
-		conf.addResource(new Path("/etc/alternatives/hadoop-conf/hdfs-site.xml"));  */
-
-		/*	FileSystem fs = FileSystem.get(conf); */
-
-		/*	if (fs.exists(outputPath)) { 
-			fs.delete(outputPath, true);
-		} */
-
-		//		Job job = Job.getInstance(getConf());
 		Job job = new Job(conf, "color Analyzer");
 		job.setJarByClass(BlocksizeMR.class);
 
@@ -255,14 +237,8 @@ protected void setup(Reducer<Text, DoubleWritable, ImmutableBytesWritable, Mutat
 		job.setMapOutputValueClass(DoubleWritable.class); 
 
 		TableMapReduceUtil.initTableReducerJob("imageData", AverageColorReducer.class, job);
-		//	job.setReducerClass(AverageColorReducer.class);
-
-
-		//	job.setOutputKeyClass(Text.class);
-		//	job.setOutputValueClass(Text.class);
 
 		FileInputFormat.addInputPath(job, inputPath);	
-		//		FileOutputFormat.setOutputPath(job, outputPath);
 
 		return job.waitForCompletion(true) ? 0 : 1;
 	}
@@ -275,10 +251,6 @@ protected void setup(Reducer<Text, DoubleWritable, ImmutableBytesWritable, Mutat
 	 */
 	public static void main(String[] args) throws Exception {
 
-		/*	if (args.length <2){
-			System.out.println("input and output missing!");
-		} */
-		//		Configuration conf = new Configuration();
 		Configuration conf = HBaseConfiguration.create();
 		conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
 		conf.addResource(new Path("/etc/alternatives/hadoop-conf/hdfs-site.xml"));
@@ -289,63 +261,50 @@ protected void setup(Reducer<Text, DoubleWritable, ImmutableBytesWritable, Mutat
 		Path inputPath = new Path (fs.getWorkingDirectory()+"/hugo"+"/Frames/"
 				+ "Anguilla-shoal-bay-2016-02-21-02-13-32-566" +"/links.txt");
 
-		Path outPath = new Path (fs.getWorkingDirectory()+"/hugo");
 		FSDataInputStream in = fs.open(inputPath);
 		int counter = 0;
 		BufferedReader reader = new BufferedReader(new InputStreamReader(in));
 
 		String line = reader.readLine(); 
-		String lineZero = "";
-		String keyDB = "";
+		String lineZero = ""; //Erste Line enthaelt DBkey
+		String keyDB = ""; //Initialisierung 
 		String indexcount = "";
-
-
 		int res=-1;
+		
 		while (line != null){
-			//	System.out.println(line);
-
-			//	String [] pathArray = line.split("/");
-			indexcount = imageCount(counter);
+			indexcount = imageCount(counter); //counter wird auf siebenstelliges Format gebracht und ...
 
 			if (counter == 0){
 				lineZero = line;
 				counter++;
-				keyDB = lineZero+"_"+indexcount;
-				//			System.out.println("main "+ keyDB);
+				keyDB = lineZero+"_"+indexcount; //... an Key angehangen
 			}
 			else {
-				//	System.out.println(counter + " else!");
 				String [] tempDir = createTmpDir(line);
 				if(!tempDir[0].equals("") && !tempDir[1].equals("")){
 					String newPathStr = tempDir[0];
 
 					String op = newPathStr+".txt";
-					//String op = line+".txt";
 					FSDataOutputStream os = fs.create(new Path(op));
 					BufferedWriter oFile = new BufferedWriter(new OutputStreamWriter(os));
-
 					oFile.write(line);
-					//	System.out.println(line);
 					oFile.flush();
 					oFile.close();
-					keyDB = lineZero+ "_" +indexcount;
-					String [] array = new String[]{op, keyDB};
-					//String [] array = new String[]{op, outPath.toString()+"/output/"+String.valueOf(counter)};
-					res = ToolRunner.run(new Configuration(), new BlocksizeMR(), array);
-					counter ++;
+				
+					keyDB = lineZero+ "_" +indexcount; //... an Key angehangen
+					String [] array = new String[]{op, keyDB}; //Uebergabe der Parameter fuer Run Methode
+					res = ToolRunner.run(new Configuration(), new BlocksizeMR(), array); //start ders MR Jobs
+					
+					counter ++; //counter inkrementieren
 					String delDirStr = tempDir[1];
-					fs.delete(new Path(delDirStr), true);
+					fs.delete(new Path(delDirStr), true); //temporaererstellter Pfad loeschen
 				}
-			//	indexcount++;
 				line = reader.readLine();
 			}
 		}
 		reader.close();  
 		System.exit(res);
 
-		/*			
-		int res = ToolRunner.run(new Configuration(), new BlocksizeMR(), args);
-		System.exit(res); */
 	}
 	/**
 	 * Diese Methode schiebt den Order "tmp" vor dem Unterordner Frames und gibt ebenso das erstellte Directory zurueck
@@ -393,6 +352,11 @@ protected void setup(Reducer<Text, DoubleWritable, ImmutableBytesWritable, Mutat
 		return new String []{"",""};
 	}
 
+	/**
+	 * die Methode bringt den uebergebenen Integer in eine 7 stellige Form
+	 * @param i Zahl, die anhangen werden soll
+	 * @return i in siebenstelliger Form
+	 */
 	public static String imageCount(int i) {
 		if (i<10) {
 			return "000000" + i;
