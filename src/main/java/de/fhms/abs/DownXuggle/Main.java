@@ -40,7 +40,7 @@ public class Main {
 					BufferedWriter oFile = new BufferedWriter(new OutputStreamWriter(os));
 
 					for (int i=0; i<counter; i++){
-						String line = String.format(fs.getWorkingDirectory()+"/" + VideoFrameSplitter.getOutputfilename()+VideoDownloader.getVideoFilename()+i+".jpg" + "\n",
+						String line = String.format(fs.getWorkingDirectory()+"/" + VideoFrameSplitter.getOutputfilename()+VideoDownloader.getVideoFilename()+i+".png" + "\n",
 						System.getProperty("line.separator"));
 						oFile.write(line);
 						System.out.println(line);
