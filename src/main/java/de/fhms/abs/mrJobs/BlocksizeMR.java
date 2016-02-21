@@ -17,6 +17,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -41,9 +42,19 @@ import org.apache.hadoop.util.ToolRunner;
 public class BlocksizeMR extends Configured implements Tool {
 
 	private final static DoubleWritable one = new DoubleWritable(1);
-
+	private static long time = 0;
+	private static Path filePath = null;
+	
 	public static class ColorAnalyzerMapper extends Mapper<LongWritable, Text, Text, DoubleWritable> {
+		
+		int blocksize = 0;
 
+		@Override
+		protected void setup(Mapper<LongWritable, Text, Text, DoubleWritable>.Context context)
+				throws IOException, InterruptedException {
+			Configuration conf = HBaseConfiguration.create(context.getConfiguration());
+			 blocksize= Integer.valueOf(conf.get("blocksize")); //holt den Key fur die DB
+		}
 		/**
 		 * Die Mapper Funktion erhaelt eine txt Datei, welche eine url zum Bild enthaelt. 
 		 * Es wird die die Farbe saemtlicher Pixel eingeladenen Bildes analysiert, 
@@ -66,7 +77,7 @@ public class BlocksizeMR extends Configured implements Tool {
 			FileSystem fs = FileSystem.get(context.getConfiguration());
 			try { //Bild einladen
 				Path inputPath = new Path(new URI(url.toString()));
-				System.out.println(inputPath.toString());
+			//	System.out.println(inputPath.toString());
 				FSDataInputStream in = fs.open(inputPath);
 				ImageInputStream imageInput = ImageIO.createImageInputStream(in);
 				image = ImageIO.read(imageInput); 
@@ -91,10 +102,9 @@ public class BlocksizeMR extends Configured implements Tool {
 						g = pixel.getGreen(); // gruen
 						b = pixel.getBlue(); // blau
 						//TODO: Blocksize weitergeben
-						Text RKey =new Text("R "+blocks(r,1)+ "," + String.valueOf(sumPixel));
-						Text GKey =new Text("G "+blocks(g,1)+ "," + String.valueOf(sumPixel));
-						Text BKey =new Text("B "+blocks(b,1)+ "," + String.valueOf(sumPixel));
-
+						Text RKey =new Text("R "+blocks(r,blocksize)+ "," + String.valueOf(sumPixel));
+						Text GKey =new Text("G "+blocks(g,blocksize)+ "," + String.valueOf(sumPixel));
+						Text BKey =new Text("B "+blocks(b,blocksize)+ "," + String.valueOf(sumPixel));
 
 						context.write(RKey, one);
 						context.write(GKey, one);
@@ -175,7 +185,7 @@ public class BlocksizeMR extends Configured implements Tool {
 		protected void setup(Reducer<Text, DoubleWritable, ImmutableBytesWritable, Mutation>.Context context)
 				throws IOException, InterruptedException {
 			Configuration conf = HBaseConfiguration.create(context.getConfiguration());
-			tmpKey = conf.get("keyDB"); 
+			tmpKey = conf.get("keyDB"); //holt den Key fur die DB
 		}
 		@Override
 		protected void reduce(Text key, Iterable<DoubleWritable> values,Context context)
@@ -225,6 +235,7 @@ public class BlocksizeMR extends Configured implements Tool {
 
 		Configuration conf = HBaseConfiguration.create(getConf());
 		conf.set("keyDB", args[1]); //DBKey aus Conf abfragen
+		conf.set("blocksize", args[2]); //Blocksize aus Conf abfragen
 
 		Job job = new Job(conf, "color Analyzer");
 		job.setJarByClass(BlocksizeMR.class);
@@ -250,17 +261,17 @@ public class BlocksizeMR extends Configured implements Tool {
 	 * @throws Exception
 	 */
 	public static void main(String[] args) throws Exception {
-
+		String[] data = getInput(args);
+		String bs = data [0]; //Blocksize
 		Configuration conf = HBaseConfiguration.create();
 		conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
 		conf.addResource(new Path("/etc/alternatives/hadoop-conf/hdfs-site.xml"));
 		FileSystem fs = FileSystem.get(conf);
 
-		//TODO Wie komme ich an das Directory vom Video? Ich kann das ja nicht statisch darin lassen wir hier
-		//Genauer gesagt muss ich "anguilla ..." durch eine variable ersetzen. 
-		Path inputPath = new Path (fs.getWorkingDirectory()+"/hugo"+"/Frames/"
-				+ "Anguilla-shoal-bay-2016-02-21-02-13-32-566" +"/links.txt");
-
+		String staticDir = fs.getHomeDirectory()+"/hugo"+"/Frames/";
+		Path inputPath = getLastModifiedHdfsFile(fs, new Path(staticDir));
+	
+		//System.out.println("1: " + inputPath);
 		FSDataInputStream in = fs.open(inputPath);
 		int counter = 0;
 		BufferedReader reader = new BufferedReader(new InputStreamReader(in));
@@ -270,7 +281,7 @@ public class BlocksizeMR extends Configured implements Tool {
 		String keyDB = ""; //Initialisierung 
 		String indexcount = "";
 		int res=-1;
-		
+
 		while (line != null){
 			indexcount = imageCount(counter); //counter wird auf siebenstelliges Format gebracht und ...
 
@@ -290,11 +301,11 @@ public class BlocksizeMR extends Configured implements Tool {
 					oFile.write(line);
 					oFile.flush();
 					oFile.close();
-				
+
 					keyDB = lineZero+ "_" +indexcount; //... an Key angehangen
-					String [] array = new String[]{op, keyDB}; //Uebergabe der Parameter fuer Run Methode
+					String [] array = new String[]{op, keyDB, bs}; //Uebergabe der Parameter fuer Run Methode
 					res = ToolRunner.run(new Configuration(), new BlocksizeMR(), array); //start ders MR Jobs
-					
+
 					counter ++; //counter inkrementieren
 					String delDirStr = tempDir[1];
 					fs.delete(new Path(delDirStr), true); //temporaererstellter Pfad loeschen
@@ -375,5 +386,64 @@ public class BlocksizeMR extends Configured implements Tool {
 		} else {
 			return "" + i;
 		}
+	}
+	/**
+	 * 
+	 * @param fs FileSystem
+	 * @param rootDir Dir, von dem aus die Methode gestartet werden soll
+	 * @return filePath zu der Datei, die als letztes modifziert wurde
+	 */
+	private static Path getLastModifiedHdfsFile(FileSystem fs, Path rootDir) {
+		
+		try {
+
+			FileStatus[] status = fs.listStatus(rootDir);
+			for (FileStatus file : status) {
+				if (file.isDir()) {
+					//System.out.println("DIRECTORY : " + file.getPath() + " - Last modification time : " + file.getModificationTime());
+					getLastModifiedHdfsFile(fs, file.getPath());
+				} else {
+					if (file.getModificationTime() > time) {
+						time = file.getModificationTime();
+						filePath = file.getPath();
+					}
+				}
+			}
+		} catch (IOException e) {
+			System.out.println("File not found");
+			e.printStackTrace();
+		}
+
+	//	System.out.println("FILE : " + filePath + " - Last modification time : " + time);
+		return filePath;  
+	}
+	
+	public static String[] getInput(String[] argv) throws IOException {
+		Configuration conf = new Configuration();
+		conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
+		conf.addResource(new Path("/etc/alternatives/hadoop-conf/hdfs-site.xml"));
+		FileSystem fs = FileSystem.get(conf);
+
+		FSDataInputStream in = fs.open(new Path (argv[0]));
+		FSDataInputStream in2 = fs.open(new Path (argv[0]));
+
+		BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+		BufferedReader reader2 = new BufferedReader(new InputStreamReader(in2));
+		int counter = 0;
+		String line = reader.readLine(); 
+
+		while (line != null){
+			counter++;
+			line = reader.readLine();
+		}
+		String[] array = new String[counter];
+		counter = 0;
+		line = reader2.readLine();
+		while (line != null){
+			array[counter] = line;
+			counter++;
+			line = reader2.readLine();
+		}
+		return array;
 	}
 }
