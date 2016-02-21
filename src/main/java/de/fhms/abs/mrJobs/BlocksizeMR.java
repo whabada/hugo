@@ -4,7 +4,6 @@ import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -13,7 +12,6 @@ import java.net.URISyntaxException;
 
 import javax.imageio.ImageIO;
 import javax.imageio.stream.ImageInputStream;
-import javax.servlet.ServletConfig;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
@@ -22,7 +20,12 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hdfs.tools.GetConf;
+import org.apache.hadoop.hbase.client.Mutation;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
+import org.apache.hadoop.hbase.mapreduce.TableMapReduceUtil;
+import org.apache.hadoop.hbase.mapreduce.TableReducer;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
@@ -31,9 +34,9 @@ import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
-import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
+
 
 public class BlocksizeMR extends Configured implements Tool {
 
@@ -158,25 +161,41 @@ public class BlocksizeMR extends Configured implements Tool {
 		}
 	}
 
-	public static class AverageColorReducer extends Reducer<Text, DoubleWritable, Text, Text> {
-
+	public static class AverageColorReducer extends TableReducer<Text, DoubleWritable, ImmutableBytesWritable> {
+		private String tmpKey ="";
 		/**
 		 * @param key: Die Eingangskey ist der Farbcode (R,G,B).
 		 * @param Iterable values: enthalten den durchschnittlichen Anteil des Farbcodes 
 		 * @param context
-		 * @return Gibt den finalen Durchschnittswert aller R Werte, aller G Werte und aller B Werte aus
+		 * @return Gibt den finalen Durchschnittswert aller R Werte, aller G Werte und aller B Werte aus, geschrieben in HBASE
 		 * @return key: R, G oder B 
 		 * @return text: resultValue
 		 */
+@Override
+protected void setup(Reducer<Text, DoubleWritable, ImmutableBytesWritable, Mutation>.Context context)
+		throws IOException, InterruptedException {
+		Configuration conf = HBaseConfiguration.create(context.getConfiguration());
+		tmpKey = conf.get("keyDB"); 
+}
 		@Override
-		protected void reduce(Text key, Iterable<DoubleWritable> values, Context context) throws IOException, InterruptedException {
-
+		protected void reduce(Text key, Iterable<DoubleWritable> values,Context context)
+				throws IOException, InterruptedException {
 			int result = 0;
 
 			for (DoubleWritable val : values){
 				result += val.get();
 			}
-			context.write(key, new Text(String.valueOf(result)));
+			String resultStr = String.valueOf(result);
+			
+
+			//	Put put = new Put(Bytes.toBytes(keyDB));
+			//	String urlTest = "https://upload.wikimedia.org/wikipedia/commons/4/4a/Anguilla-shoal-bay.ogg_0000001";
+			//	Put put = new Put (Bytes.toBytes(urlTest));
+			Put put = new Put (Bytes.toBytes(tmpKey));
+			put.addColumn(Bytes.toBytes("averageColor"), Bytes.toBytes(key.toString()), Bytes.toBytes(resultStr));
+			put.addColumn(Bytes.toBytes("dominantColor"), Bytes.toBytes(key.toString()), Bytes.toBytes(0));
+
+			context.write(null, put); 
 		}
 	}
 	/**
@@ -206,36 +225,44 @@ public class BlocksizeMR extends Configured implements Tool {
 
 	//	@Override
 	public int run(String[] args) throws Exception {
-		Configuration conf = new Configuration();
+
 		Path inputPath = new Path (args[0]);
-		Path outputPath = new Path(args[1]);
 
-		conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
-		conf.addResource(new Path("/etc/alternatives/hadoop-conf/hdfs-site.xml")); 
+		Configuration conf = HBaseConfiguration.create(getConf());
+		conf.set("keyDB", args[1]);
 
-		FileSystem fs = FileSystem.get(conf);
+		/*		Path outputPath = new Path(args[1]); */
 
-		if (fs.exists(outputPath)) { 
+		/* TODO brauche ich das? 
+		 * 		conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
+		conf.addResource(new Path("/etc/alternatives/hadoop-conf/hdfs-site.xml"));  */
+
+		/*	FileSystem fs = FileSystem.get(conf); */
+
+		/*	if (fs.exists(outputPath)) { 
 			fs.delete(outputPath, true);
-		}
+		} */
 
-		Job job = Job.getInstance(conf);
-		//	Job job = new Job(conf, "color Analyzer");
+		//		Job job = Job.getInstance(getConf());
+		Job job = new Job(conf, "color Analyzer");
 		job.setJarByClass(BlocksizeMR.class);
 
 		job.setInputFormatClass(TextInputFormat.class);
 
 		job.setMapperClass(ColorAnalyzerMapper.class);
-		job.setReducerClass(AverageColorReducer.class);
 		job.setCombinerClass(AverageColorCombiner.class);
-
 		job.setMapOutputKeyClass(Text.class);
 		job.setMapOutputValueClass(DoubleWritable.class); 
-		job.setOutputKeyClass(Text.class);
-		job.setOutputValueClass(Text.class);
+
+		TableMapReduceUtil.initTableReducerJob("imageData", AverageColorReducer.class, job);
+		//	job.setReducerClass(AverageColorReducer.class);
+
+
+		//	job.setOutputKeyClass(Text.class);
+		//	job.setOutputValueClass(Text.class);
 
 		FileInputFormat.addInputPath(job, inputPath);	
-		FileOutputFormat.setOutputPath(job, outputPath);
+		//		FileOutputFormat.setOutputPath(job, outputPath);
 
 		return job.waitForCompletion(true) ? 0 : 1;
 	}
@@ -251,16 +278,16 @@ public class BlocksizeMR extends Configured implements Tool {
 		/*	if (args.length <2){
 			System.out.println("input and output missing!");
 		} */
-		Configuration conf = new Configuration();
+		//		Configuration conf = new Configuration();
+		Configuration conf = HBaseConfiguration.create();
 		conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
 		conf.addResource(new Path("/etc/alternatives/hadoop-conf/hdfs-site.xml"));
 		FileSystem fs = FileSystem.get(conf);
 
-
 		//TODO Wie komme ich an das Directory vom Video? Ich kann das ja nicht statisch darin lassen wir hier
 		//Genauer gesagt muss ich "anguilla ..." durch eine variable ersetzen. 
 		Path inputPath = new Path (fs.getWorkingDirectory()+"/hugo"+"/Frames/"
-				+ "Anguilla-shoal-bay-2016-02-20-06-55-45-168" +"/links.txt");
+				+ "Anguilla-shoal-bay-2016-02-21-02-13-32-566" +"/links.txt");
 
 		Path outPath = new Path (fs.getWorkingDirectory()+"/hugo");
 		FSDataInputStream in = fs.open(inputPath);
@@ -268,43 +295,54 @@ public class BlocksizeMR extends Configured implements Tool {
 		BufferedReader reader = new BufferedReader(new InputStreamReader(in));
 
 		String line = reader.readLine(); 
+		String lineZero = "";
+		String keyDB = "";
+		String indexcount = "";
+
+
 		int res=-1;
 		while (line != null){
+			//	System.out.println(line);
 
 			//	String [] pathArray = line.split("/");
+			indexcount = imageCount(counter);
 
-			String [] tempDir = createTmpDir(line);
-			if(!tempDir[0].equals("") && !tempDir[1].equals("")){
-				String newPathStr = tempDir[0];
-
-				String op = newPathStr+".txt";
-				//String op = line+".txt";
-				FSDataOutputStream os = fs.create(new Path(op));
-				BufferedWriter oFile = new BufferedWriter(new OutputStreamWriter(os));
-
-				oFile.write(line);
-				System.out.println(line);
-				oFile.flush();
-				oFile.close();
-
-				String [] array = new String[]{op, outPath.toString()+"/output/"+String.valueOf(counter)};
-				res = ToolRunner.run(new Configuration(), new BlocksizeMR(), array);
-				counter ++;
-				String delDirStr = tempDir[1];
-				fs.delete(new Path(delDirStr), true);
-				/*	if (fs.delete(new Path(delDirStr), true)){
-				System.out.println("Delete successful");
+			if (counter == 0){
+				lineZero = line;
+				counter++;
+				keyDB = lineZero+"_"+indexcount;
+				//			System.out.println("main "+ keyDB);
 			}
 			else {
-				System.out.println("Delete not successful");
-			} */
+				//	System.out.println(counter + " else!");
+				String [] tempDir = createTmpDir(line);
+				if(!tempDir[0].equals("") && !tempDir[1].equals("")){
+					String newPathStr = tempDir[0];
 
+					String op = newPathStr+".txt";
+					//String op = line+".txt";
+					FSDataOutputStream os = fs.create(new Path(op));
+					BufferedWriter oFile = new BufferedWriter(new OutputStreamWriter(os));
+
+					oFile.write(line);
+					//	System.out.println(line);
+					oFile.flush();
+					oFile.close();
+					keyDB = lineZero+ "_" +indexcount;
+					String [] array = new String[]{op, keyDB};
+					//String [] array = new String[]{op, outPath.toString()+"/output/"+String.valueOf(counter)};
+					res = ToolRunner.run(new Configuration(), new BlocksizeMR(), array);
+					counter ++;
+					String delDirStr = tempDir[1];
+					fs.delete(new Path(delDirStr), true);
+				}
+			//	indexcount++;
 				line = reader.readLine();
 			}
 		}
+		reader.close();  
 		System.exit(res);
 
-		reader.close();  
 		/*			
 		int res = ToolRunner.run(new Configuration(), new BlocksizeMR(), args);
 		System.exit(res); */
@@ -346,12 +384,32 @@ public class BlocksizeMR extends Configured implements Tool {
 				}
 			}
 			String newPathStr = "";
-			System.out.println(delDirStr);
+			//		System.out.println(delDirStr);
 			for (int i=0; i <newPath.length; i++){
 				newPathStr += newPath[i];
 			}
 			return new String []{newPathStr, delDirStr};
 		}
 		return new String []{"",""};
+	}
+
+	public static String imageCount(int i) {
+		if (i<10) {
+			return "000000" + i;
+		} else if (i<100) {
+			return "00000" + i;
+		} else if (i<1000) {
+			return "0000" + i;
+		} else if (i<1000) {
+			return "000" + i;
+		} else if (i<10000) {
+			return "00" + i;
+		} else if (i<100000) {
+			return "0" + i;
+		} else if (i<1000000) {
+			return "" + i;
+		} else {
+			return "" + i;
+		}
 	}
 }
