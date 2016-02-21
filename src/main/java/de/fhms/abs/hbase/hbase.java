@@ -4,10 +4,16 @@ import de.fhms.abs.*;
 import de.fhms.abs.DownXuggle.VideoDownloader;
 import de.fhms.abs.outputgenerator.generateImage;
 
+import java.net.URL;
 import java.nio.ByteBuffer;
 
+import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FSInputStream;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.KeyValue;
@@ -29,9 +35,19 @@ import org.mortbay.log.Slf4jLog;
 
 import ch.qos.logback.core.filter.Filter;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.imageio.ImageIO;
 
 public class hbase extends Configured implements Tool {
 
@@ -41,13 +57,13 @@ public class hbase extends Configured implements Tool {
 	/** The name of the column family used by the application. */
 	public static final byte[] VIDEO_DATA_CF1 = Bytes.toBytes("metadata");
 	public static final byte[] VIDEO_DATA_CF2 = Bytes.toBytes("block");
-	public static final byte[] IMAGE_DATA_CF1 = Bytes.toBytes("avarageColor");
+	public static final byte[] IMAGE_DATA_CF1 = Bytes.toBytes("averageColor");
 	public static final byte[] IMAGE_DATA_CF2 = Bytes.toBytes("dominantColor");
 	public static Connection con = null;
 
 	public static String videoBlockSize = "";
 	public static Boolean blockSizeAnalyzed = false;
-	
+
 	public static int outputHeight = 0;
 	public static int outputWidth = 0;
 
@@ -57,8 +73,6 @@ public class hbase extends Configured implements Tool {
 		try {
 			// establish the connection to the cluster.
 			con = ConnectionFactory.createConnection(getConf());
-			
-
 			if (argv[0].equals("getVideoRecord")) {
 				//#################################################################################################
 
@@ -93,6 +107,10 @@ public class hbase extends Configured implements Tool {
 						 * MapReduce Job von Ben anstoßen
 						 */
 					}
+				} else {
+					System.out.println("Video noch nicht vorhanden -> Download");
+					String[] data = new String[] {"addVideoRecord", argv[1], argv[2]};
+					writeDataFile(data);
 				}
 
 
@@ -126,6 +144,7 @@ public class hbase extends Configured implements Tool {
 
 			} else if (argv[0].equals("addVideoRecord")) {
 				//#################################################################################################
+				System.out.println("addVideoRecord");
 				String videokey = "";
 				if (argv.length < 1) {
 					videokey = "https://upload.wikimedia.org/wikipedia/commons/4/4a/Anguilla-shoal-bay.ogg";
@@ -134,7 +153,8 @@ public class hbase extends Configured implements Tool {
 					videokey = argv[1];
 					videoBlockSize = argv[2];
 				}
-				
+				System.out.println("Vars wurden gesetzt");
+				System.out.println(videokey);
 				String[] videoInformation = VideoDownloader.videoToHdfs(videokey);
 				String name = videoInformation[0];
 				String filepath = videoInformation[1];
@@ -149,6 +169,10 @@ public class hbase extends Configured implements Tool {
 				System.out.println(videoInformation[4]);
 
 				addVideoRecord(VIDEO_DATA, hyperlink, name, hyperlink, filepath, offset, videoBlockSize, videoSize);
+
+				//extractVideo(videoInformation);
+				String[] data = new String[] {videoInformation[2], videoInformation[0], argv[2]};
+				writeDataFile(data);
 			}
 
 			//int[] data = getImagesOfVideo(IMAGE_DATA, "image_");
@@ -274,7 +298,7 @@ public class hbase extends Configured implements Tool {
 						if (count2 == 3) {
 							for (int j = 0; j < pixels; j = j+outputWidth) {
 								durchlaufe++;
-								
+
 								data[i+j] = (red << 16) | (green << 8) | blue;
 								System.out.println(data[i+j]);
 							}
@@ -314,13 +338,109 @@ public class hbase extends Configured implements Tool {
 		System.setProperty("hadoop.home.dir", "/usr/lib/hadoop");
 		System.setProperty("$HBASE_HOME", "/usr/lib/hbase");
 		System.setProperty("java.class.path", "/usr/lib/hbase/client/*:/home/cloudera/.m2/*:.");
-		
+		Configuration conf = new Configuration();
+		conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
+		conf.addResource(new Path("/etc/alternatives/hadoop-conf/hdfs-site.xml"));
+		FileSystem fs = FileSystem.get(conf);
+
+		FSDataInputStream in = fs.open(new Path (argv[0]));
+		FSDataInputStream in2 = fs.open(new Path (argv[0]));
+
+		BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+		BufferedReader reader2 = new BufferedReader(new InputStreamReader(in2));
+		int counter = 0;
+		String line = reader.readLine(); 
+
+		while (line != null){
+			counter++;
+			line = reader.readLine();
+		}
+		String[] array = new String[counter];
+		counter = 0;
+		line = reader2.readLine();
+		while (line != null){
+			array[counter] = line;
+			counter++;
+			line = reader2.readLine();
+		}
 		//String[] data = new String[] {"getImagesOfVideo", "https"};
-		String[] data = new String[] {"addVideoRecord", "https://upload.wikimedia.org/wikipedia/commons/4/4a/Anguilla-shoal-bay.ogg", "40"};
+		//String[] array = new String[] {"addVideoRecord", "https://upload.wikimedia.org/wikipedia/commons/4/4a/Anguilla-shoal-bay.ogg", "40"};
 		//String[] data = new String[] {"getVideoRecord", "https://upload.wikimedia.org/wikipedia/commons/4/4a/Anguilla-shoal-bay.ogg", "40"};
 		//String[] data = new String[] {"addImageRecord", "https://upload.wikimedia.org/wikipedia/commons/4/4a/Anguilla-shoal-bay.ogg", "19", "255;255;255", "0;0;0"};
-		
-		int ret = ToolRunner.run(new hbase(), data);
+
+		int ret = ToolRunner.run(new hbase(), array);
 		System.exit(ret);
+	}
+
+	public static void writeDataFile (String[] data) throws IOException {
+		Configuration conf = new Configuration();
+		conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
+		conf.addResource(new Path("/etc/alternatives/hadoop-conf/hdfs-site.xml"));
+		FileSystem fs = FileSystem.get(conf);
+
+		FSDataOutputStream os = fs.create(new Path("oozie/data.txt"));
+		BufferedWriter oFile = new BufferedWriter(new OutputStreamWriter(os));
+
+		for (String l: data){
+			oFile.write(l + "\n");
+		}
+
+		oFile.flush();
+		oFile.close();
+	}
+
+	public static void extractVideo (String[] data) throws IOException {
+		String name = data[0];
+		String filepath = data[1];
+		String hyperlink = data[2];
+		String videoSize = data[3];
+		String offset = data[4];
+
+		System.out.println("name " + data[0]);
+		System.out.println("filepath" + data[1]);
+		System.out.println("hyperlink" + data[2]);
+		System.out.println("videosize" + data[3]);
+		System.out.println("offset" + data[4]);
+		Configuration conf = new Configuration();
+		conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
+		conf.addResource(new Path("/etc/alternatives/hadoop-conf/hdfs-site.xml"));
+		FileSystem fs = FileSystem.get(conf);
+
+		Path outFile = new Path(fs.getHomeDirectory() + "/hugo/tmp_video/" + name);
+		FSDataOutputStream out = null;
+		out = fs.create(outFile);
+
+		System.out.println(filepath);
+		Path path = new Path(filepath);
+		FSDataInputStream is = fs.open(path);
+		
+		int len = 0;
+		byte[] buffer = new byte[1024];
+		is.read(new byte[Integer.valueOf(offset) - 1]);
+		int count = 0;
+		System.out.println("Tmp outfile: " + outFile.toString());
+		if(is != null) {
+			Boolean read = true;
+			while (read) {
+				if (count + 1024 > Integer.valueOf(videoSize)) {
+					byte[] buffer2 = new byte[Integer.valueOf(videoSize) - count];
+					len = is.read(buffer2);
+					out.write(buffer2, 0, len);
+					read = false;
+					System.out.println(len);
+				} else {
+					len = is.read(buffer);
+					count = count + len;
+					System.out.println(len);
+					out.write(buffer,0, len);
+					
+				}
+			}
+			System.out.println("extract Video: Daten wurden geschrieben");
+		}
+
+		is.close();
+		out.flush();
+		out.close();
 	}
 }
