@@ -22,25 +22,13 @@ public class VideoDownloader {
 		} else {
 			u = new URL(url);
 		}
-
-		//	System.out.println(u.getHost());
-		//  	System.out.println(u.getPath());
+		
 		String[] splitUrl =  u.getPath().split("/");
 		String fileName = splitUrl[splitUrl.length -1];
 		InputStream is = u.openStream();
 		
 		vidFileName = fileName.split("\\.")[0];
-		//System.out.println(vidFileName);
-		//String storagePath = Environment.getExternalStorageDirectory().toString();
-		//String storagePath = "/home/cloudera/Videos/";
-		//File f = new File(storagePath,fileName);
-		//FileOutputStream fos = new FileOutputStream(f);
 
-		/*if(is != null) {
-            while ((len1 = is.read(buffer)) > 0) {
-                fos.write(buffer,0, len1);  
-            }
-        } */
 		Configuration conf = new Configuration();
 		conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
 		conf.addResource(new Path("/etc/alternatives/hadoop-conf/hdfs-site.xml"));
@@ -95,12 +83,17 @@ public class VideoDownloader {
 			byte[] buffer = new byte[1024];
 			int len1 = 0;
 
+			Path outFile = new Path(fs.getHomeDirectory() + "/hugo/tmp_video/" + videoName);
+			FSDataOutputStream out = null;
+			out = fs.create(outFile);
 			if(is != null) {
 				while ((len1 = is.read(buffer)) > 0) {
 					videoSizeCount = videoSizeCount + len1;
+					out.write(buffer,0, len1);
 				}
 			}
 			is.close();
+			out.close();
 		}
 
 		System.out.println("video size: " + videoSizeCount);

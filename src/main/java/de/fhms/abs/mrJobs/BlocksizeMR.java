@@ -314,6 +314,10 @@ public class BlocksizeMR extends Configured implements Tool {
 			}
 		}
 		reader.close();  
+		
+		String[] data2 = new String[] {"getImagesOfVideo", data[1]};
+		writeDataFile(data2);
+		
 		System.exit(res);
 
 	}
@@ -445,5 +449,22 @@ public class BlocksizeMR extends Configured implements Tool {
 			line = reader2.readLine();
 		}
 		return array;
+	}
+	
+	public static void writeDataFile (String[] data) throws IOException {
+		Configuration conf = new Configuration();
+		conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
+		conf.addResource(new Path("/etc/alternatives/hadoop-conf/hdfs-site.xml"));
+		FileSystem fs = FileSystem.get(conf);
+
+		FSDataOutputStream os = fs.create(new Path("oozie/data.txt"));
+		BufferedWriter oFile = new BufferedWriter(new OutputStreamWriter(os));
+
+		for (String l: data){
+			oFile.write(l + "\n");
+		}
+
+		oFile.flush();
+		oFile.close();
 	}
 }

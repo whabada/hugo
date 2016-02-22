@@ -5,6 +5,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Timestamp;
+
 import javax.imageio.ImageIO;
 
 import org.apache.commons.io.output.ByteArrayOutputStream;
@@ -18,6 +19,8 @@ import com.xuggle.mediatool.MediaListenerAdapter;
 import com.xuggle.mediatool.ToolFactory;
 import com.xuggle.mediatool.event.IVideoPictureEvent;
 import com.xuggle.xuggler.Global;
+import com.xuggle.xuggler.IContainer;
+import com.xuggle.xuggler.IContainerFormat;
 
 
 public class VideoFrameSplitter {
@@ -26,14 +29,14 @@ public class VideoFrameSplitter {
 	/*TODO Anpassung an HDFS: Das Einlesen von einer File aus dem HDFS funktioniert nicht,
 	 * Fehler in Line 60, Ursprung in Line 48, wenn man einen HDFS Link einsetzt.
 	 */
-	private static String inputFilename = "/home/cloudera/Videos/FILE.ogg"; 
+	private static String inputFilename = "/home/cloudera/tmp_video/FILE.ogg"; 
 	private static String outputFilePrefix;
 	private static int counter; 
 	private static String outputFilename;
 	private static String outputFilePath;
 
 	//Namen des Videos holen
-	private static String videoFileName = VideoDownloader.getVideoFilename();
+	private static String videoFileName = "";
 
 	// Ein Video Stream Index, den wir nutzen, dass wir auch tatsaechlich nur Frames eines bestimmten VideoStreams nehmen
 	private static int mVideoStreamIndex = -1;
@@ -44,8 +47,8 @@ public class VideoFrameSplitter {
 	public static final long MICRO_SECONDS_BETWEEN_FRAMES = 
 			(long)(Global.DEFAULT_PTS_PER_SECOND * SECONDS_BETWEEN_FRAMES);
 
-	public static void split (String[] args) {
-		
+	public static void split (String[] args) throws IllegalArgumentException, IOException {
+		videoFileName = args[2];
 		//TimeStamp zur eindeutigkeit der Frames
 		String getTimeStamp = new Timestamp(System.currentTimeMillis()).toString();
 		//TimeStamp bereinigen
@@ -53,10 +56,22 @@ public class VideoFrameSplitter {
 		getTimeStamp = getTimeStamp.replaceAll(" ", "-");
 		getTimeStamp = getTimeStamp.replaceAll("\\.", "-"); 
 
-		IMediaReader mediaReader = ToolFactory.makeReader(inputFilename);
 		inputFilename = args[0];
+		Configuration conf = new Configuration();
+		conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
+		conf.addResource(new Path("/etc/alternatives/hadoop-conf/hdfs-site.xml"));
+		FileSystem fs = FileSystem.get(conf);
+		
+		IContainer ic = IContainer.make();
+		InputStream is = fs.open(new Path(args[0]));
+		ic.open(is, IContainerFormat.make());
+		//ic.open(is, IContainer.Type.READ);
+		IMediaReader mediaReader = ToolFactory.makeReader(ic);
+		//IMediaReader mediaReader = ToolFactory.makeReader(inputFilename);
 		outputFilePrefix = args[1] + videoFileName + "-" + getTimeStamp + "/";
-
+		
+		
+		
 		//initialisiere counter
 		counter =0;
 
