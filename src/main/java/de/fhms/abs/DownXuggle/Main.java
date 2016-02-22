@@ -57,7 +57,7 @@ public class Main {
 					//os.close();
 					oFile.close();
 
-					String[] dataNew = new String[] {data[2], data[0]};
+					String[] dataNew = new String[] {data[2], data[0], vidFileName};
 					writeDataFile(dataNew);
 				}
 

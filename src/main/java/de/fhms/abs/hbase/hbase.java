@@ -123,7 +123,7 @@ public class hbase extends Configured implements Tool {
 					videokey = argv[1];
 				}
 				int[] data = getImagesOfVideo(IMAGE_DATA, videokey);
-				generateImage.getImageFromArray(data, outputWidth, outputHeight);
+				generateImage.getImageFromArray(data, outputWidth, outputHeight, argv[2]);
 
 			} else if (argv[0].equals("addImageRecord")) {
 				//#################################################################################################
@@ -258,6 +258,7 @@ public class hbase extends Configured implements Tool {
 
 	public static int[] getImagesOfVideo (TableName tableName, String key) {
 		try{
+			System.out.println("get Images of Video");
 			Table table = con.getTable(tableName);
 			Scan s = new Scan();
 			PrefixFilter filter = new PrefixFilter(Bytes.toBytes(key));
@@ -272,8 +273,9 @@ public class hbase extends Configured implements Tool {
 
 			System.out.println(count);
 			int pixels = count * (count/5);
+			System.out.println("Anzahl der Pixel im Array" + pixels);
 			outputWidth = count;
-			outputHeight = count/5;
+			outputHeight = count/4;
 			int[] data = new int[pixels];
 			int i = 0;
 
@@ -286,7 +288,7 @@ public class hbase extends Configured implements Tool {
 				int count2 = 0;
 				for(KeyValue kv : r.raw()){
 
-					if((new String(kv.getFamily())).equals("avarageColor")) {
+					if((new String(kv.getFamily())).equals("averageColor")) {
 						count2++;
 						if (new String(kv.getQualifier()).equals("R")) {
 							red = new Integer(new String(kv.getValue()));
@@ -308,7 +310,38 @@ public class hbase extends Configured implements Tool {
 					}
 				}
 			}
-			return data;
+			
+			System.out.println("hbaseGenerateImage: Array Size: " + data.length);
+			System.out.println("hbaseGenerateImage: Width: " + outputWidth);
+			System.out.println("hbaseGenerateImage: Height: " + outputHeight);
+			System.out.println("hbaseGenerateImage: Array Value 0: " + data[0]);
+			
+			
+			int x = 200;
+			if (data.length < 10) {
+				outputHeight = outputHeight * x;
+				outputWidth = outputWidth * x;
+				int[] data2 = new int[outputHeight * outputWidth];
+						
+				for (int n = 0; n < data.length; n++) {
+					for (int c = 0; c < x; c++) {
+						for (int r = 0; r < data2.length; r  = r + outputWidth) {
+							data2[n*x+c+r] = data[n];
+						}
+					}
+					
+				}
+				/*for (int n = 0; n < data.length; n++) {
+					for (int m = 0; m < x; m++) {
+						data2[n * x + m] = data[n];
+					}
+				}
+				*/
+				return data2;
+			} else {
+				return data;
+			}
+			//return data;
 		} catch (IOException e){
 			e.printStackTrace();
 		}

@@ -25,7 +25,7 @@ import com.xuggle.xuggler.IContainerFormat;
 
 public class VideoFrameSplitter {
 
-	public static final double SECONDS_BETWEEN_FRAMES = 5;
+	public static final double SECONDS_BETWEEN_FRAMES = 3.5;
 	/*TODO Anpassung an HDFS: Das Einlesen von einer File aus dem HDFS funktioniert nicht,
 	 * Fehler in Line 60, Ursprung in Line 48, wenn man einen HDFS Link einsetzt.
 	 */
