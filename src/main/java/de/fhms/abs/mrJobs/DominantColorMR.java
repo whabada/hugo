@@ -53,7 +53,7 @@ public class DominantColorMR extends Configured implements Tool {
 			Configuration conf = HBaseConfiguration.create(context.getConfiguration());
 			blocksize= Integer.valueOf(conf.get("blocksize")); //holt den Key fur die DB
 		}
-		/**
+		/** 
 		 * Die Mapper Funktion erhaelt eine txt Datei, welche eine url zum Bild enthaelt. 
 		 * Es wird die die Farbe saemtlicher Pixel eingeladenen Bildes analysiert, 
 		 * in dem fuer jeden Farbwert gezaehlt wird, wie haeufig die Farbe erscheint.  
@@ -118,11 +118,11 @@ public class DominantColorMR extends Configured implements Tool {
 
 	public static class Reducer extends TableReducer<Text, IntWritable, ImmutableBytesWritable> {
 		private String tmpKey ="";
-		/**
+		/** Die Methode der aggregiert die Häufigkeit der "gesehenen" Farbwerte. 
+		 * Ermittelt wird der haeufigste vorkommende Farbwert, dieser wird in HBase gespeichert 
 		 * @param key: Die Eingangskey ist der Farbcode (R,G,B).
 		 * @param Iterable values: enthalten den durchschnittlichen Anteil des Farbcodes 
 		 * @param context
-		 * @return Gibt den finalen Durchschnittswert aller R Werte, aller G Werte und aller B Werte aus, geschrieben in HBASE
 		 * @return key: R, G oder B 
 		 * @return text: resultValue
 		 */

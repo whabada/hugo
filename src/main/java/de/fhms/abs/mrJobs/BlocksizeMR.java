@@ -163,7 +163,7 @@ public class BlocksizeMR extends Configured implements Tool {
 				}
 			}
 
-			double relAnt = amount / sumPixel; //Berechnung relativer Anteil 
+			double relAnt = amount / sumPixel; // relative Pixelanteil an der Gesamtpixelzahl
 			double antDurch = relAnt*farbcode; //Berechnung Farbanteil am Durchschnitt
 
 			context.write(new Text(farbtype), new DoubleWritable(antDurch));
