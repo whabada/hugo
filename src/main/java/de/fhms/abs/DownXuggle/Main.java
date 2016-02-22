@@ -26,9 +26,6 @@ public class Main {
 		else {
 			String[] data = getInput(args);
 			String url = data[0];
-			//String url = "https://upload.wikimedia.org/wikipedia/commons/4/4a/Anguilla-shoal-bay.ogg";
-			
-			//vidPath = VideoDownloader.download(url);
 			FileSystem fs = FileSystem.get(new Configuration());
 			String homePath= fs.getWorkingDirectory().toString();
 			vidPath = "hugo/tmp_video/" + data[1];
@@ -45,10 +42,15 @@ public class Main {
 					FSDataOutputStream os = fs.create(new Path(op));
 					BufferedWriter oFile = new BufferedWriter(new OutputStreamWriter(os));
 
-					for (int i=0; i<counter; i++){
-						
-						String line = String.format(fs.getWorkingDirectory()+"/" + VideoFrameSplitter.getOutputfilename()+vidFileName+i+".png" + "\n",
+					for (int i=-1; i<counter; i++){
+						String line;
+						if (i==-1){
+						line = String.format(url.toString()+"\n",System.getProperty("line.separator"));
+						}
+						else {
+						line = String.format(fs.getWorkingDirectory()+"/" + VideoFrameSplitter.getOutputfilename()+vidFileName+i+".png" + "\n",
 						System.getProperty("line.separator"));
+						}
 						oFile.write(line);
 						System.out.println(line);
 					}

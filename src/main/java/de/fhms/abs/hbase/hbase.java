@@ -363,7 +363,7 @@ public class hbase extends Configured implements Tool {
 			counter++;
 			line = reader2.readLine();
 		}
-		//String[] data = new String[] {"getImagesOfVideo", "https"};
+		//String[] array = new String[] {"getImagesOfVideo", "https"};
 		//String[] array = new String[] {"addVideoRecord", "https://upload.wikimedia.org/wikipedia/commons/4/4a/Anguilla-shoal-bay.ogg", "40"};
 		//String[] data = new String[] {"getVideoRecord", "https://upload.wikimedia.org/wikipedia/commons/4/4a/Anguilla-shoal-bay.ogg", "40"};
 		//String[] data = new String[] {"addImageRecord", "https://upload.wikimedia.org/wikipedia/commons/4/4a/Anguilla-shoal-bay.ogg", "19", "255;255;255", "0;0;0"};

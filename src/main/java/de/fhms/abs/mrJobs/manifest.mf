@@ -1,0 +1,3 @@
+Manifest-Version: 1.0
+Main-Class: de.fhms.abs.mrJobs.BlocksizeMR
+Class-Path: hbase-annotations-1.0.0-cdh5.5.0.jar hbase-client-1.0.0-cdh5.5.0.jar hbase-common-1.0.0-cdh5.5.0.jar hbase-protocol-1.0.0-cdh5.5.0.jar htrace-core-3.2.0-incubating.jar hadoop-common-2.6.0-cdh5.4.2

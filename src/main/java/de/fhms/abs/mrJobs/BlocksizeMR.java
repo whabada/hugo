@@ -4,7 +4,6 @@ import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -13,16 +12,21 @@ import java.net.URISyntaxException;
 
 import javax.imageio.ImageIO;
 import javax.imageio.stream.ImageInputStream;
-import javax.servlet.ServletConfig;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hdfs.tools.GetConf;
+import org.apache.hadoop.hbase.client.Mutation;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
+import org.apache.hadoop.hbase.mapreduce.TableMapReduceUtil;
+import org.apache.hadoop.hbase.mapreduce.TableReducer;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
@@ -31,16 +35,26 @@ import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
-import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
+
 
 public class BlocksizeMR extends Configured implements Tool {
 
 	private final static DoubleWritable one = new DoubleWritable(1);
-
+	private static long time = 0;
+	private static Path filePath = null;
+	
 	public static class ColorAnalyzerMapper extends Mapper<LongWritable, Text, Text, DoubleWritable> {
+		
+		int blocksize = 0;
 
+		@Override
+		protected void setup(Mapper<LongWritable, Text, Text, DoubleWritable>.Context context)
+				throws IOException, InterruptedException {
+			Configuration conf = HBaseConfiguration.create(context.getConfiguration());
+			 blocksize= Integer.valueOf(conf.get("blocksize")); //holt den Key fur die DB
+		}
 		/**
 		 * Die Mapper Funktion erhaelt eine txt Datei, welche eine url zum Bild enthaelt. 
 		 * Es wird die die Farbe saemtlicher Pixel eingeladenen Bildes analysiert, 
@@ -63,7 +77,7 @@ public class BlocksizeMR extends Configured implements Tool {
 			FileSystem fs = FileSystem.get(context.getConfiguration());
 			try { //Bild einladen
 				Path inputPath = new Path(new URI(url.toString()));
-				System.out.println(inputPath.toString());
+			//	System.out.println(inputPath.toString());
 				FSDataInputStream in = fs.open(inputPath);
 				ImageInputStream imageInput = ImageIO.createImageInputStream(in);
 				image = ImageIO.read(imageInput); 
@@ -88,10 +102,9 @@ public class BlocksizeMR extends Configured implements Tool {
 						g = pixel.getGreen(); // gruen
 						b = pixel.getBlue(); // blau
 						//TODO: Blocksize weitergeben
-						Text RKey =new Text("R "+blocks(r,1)+ "," + String.valueOf(sumPixel));
-						Text GKey =new Text("G "+blocks(g,1)+ "," + String.valueOf(sumPixel));
-						Text BKey =new Text("B "+blocks(b,1)+ "," + String.valueOf(sumPixel));
-
+						Text RKey =new Text("R "+blocks(r,blocksize)+ "," + String.valueOf(sumPixel));
+						Text GKey =new Text("G "+blocks(g,blocksize)+ "," + String.valueOf(sumPixel));
+						Text BKey =new Text("B "+blocks(b,blocksize)+ "," + String.valueOf(sumPixel));
 
 						context.write(RKey, one);
 						context.write(GKey, one);
@@ -158,25 +171,36 @@ public class BlocksizeMR extends Configured implements Tool {
 		}
 	}
 
-	public static class AverageColorReducer extends Reducer<Text, DoubleWritable, Text, Text> {
-
+	public static class AverageColorReducer extends TableReducer<Text, DoubleWritable, ImmutableBytesWritable> {
+		private String tmpKey ="";
 		/**
 		 * @param key: Die Eingangskey ist der Farbcode (R,G,B).
 		 * @param Iterable values: enthalten den durchschnittlichen Anteil des Farbcodes 
 		 * @param context
-		 * @return Gibt den finalen Durchschnittswert aller R Werte, aller G Werte und aller B Werte aus
+		 * @return Gibt den finalen Durchschnittswert aller R Werte, aller G Werte und aller B Werte aus, geschrieben in HBASE
 		 * @return key: R, G oder B 
 		 * @return text: resultValue
 		 */
 		@Override
-		protected void reduce(Text key, Iterable<DoubleWritable> values, Context context) throws IOException, InterruptedException {
-
+		protected void setup(Reducer<Text, DoubleWritable, ImmutableBytesWritable, Mutation>.Context context)
+				throws IOException, InterruptedException {
+			Configuration conf = HBaseConfiguration.create(context.getConfiguration());
+			tmpKey = conf.get("keyDB"); //holt den Key fur die DB
+		}
+		@Override
+		protected void reduce(Text key, Iterable<DoubleWritable> values,Context context)
+				throws IOException, InterruptedException {
 			int result = 0;
 
 			for (DoubleWritable val : values){
 				result += val.get();
 			}
-			context.write(key, new Text(String.valueOf(result)));
+			String resultStr = String.valueOf(result);
+			Put put = new Put (Bytes.toBytes(tmpKey));
+			put.addColumn(Bytes.toBytes("averageColor"), Bytes.toBytes(key.toString()), Bytes.toBytes(resultStr));
+			put.addColumn(Bytes.toBytes("dominantColor"), Bytes.toBytes(key.toString()), Bytes.toBytes(0));
+
+			context.write(null, put); 
 		}
 	}
 	/**
@@ -206,36 +230,26 @@ public class BlocksizeMR extends Configured implements Tool {
 
 	//	@Override
 	public int run(String[] args) throws Exception {
-		Configuration conf = new Configuration();
+
 		Path inputPath = new Path (args[0]);
-		Path outputPath = new Path(args[1]);
 
-		conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
-		conf.addResource(new Path("/etc/alternatives/hadoop-conf/hdfs-site.xml")); 
+		Configuration conf = HBaseConfiguration.create(getConf());
+		conf.set("keyDB", args[1]); //DBKey aus Conf abfragen
+		conf.set("blocksize", args[2]); //Blocksize aus Conf abfragen
 
-		FileSystem fs = FileSystem.get(conf);
-
-		if (fs.exists(outputPath)) { 
-			fs.delete(outputPath, true);
-		}
-
-		Job job = Job.getInstance(conf);
-		//	Job job = new Job(conf, "color Analyzer");
+		Job job = new Job(conf, "color Analyzer");
 		job.setJarByClass(BlocksizeMR.class);
 
 		job.setInputFormatClass(TextInputFormat.class);
 
 		job.setMapperClass(ColorAnalyzerMapper.class);
-		job.setReducerClass(AverageColorReducer.class);
 		job.setCombinerClass(AverageColorCombiner.class);
-
 		job.setMapOutputKeyClass(Text.class);
 		job.setMapOutputValueClass(DoubleWritable.class); 
-		job.setOutputKeyClass(Text.class);
-		job.setOutputValueClass(Text.class);
+
+		TableMapReduceUtil.initTableReducerJob("imageData", AverageColorReducer.class, job);
 
 		FileInputFormat.addInputPath(job, inputPath);	
-		FileOutputFormat.setOutputPath(job, outputPath);
 
 		return job.waitForCompletion(true) ? 0 : 1;
 	}
@@ -247,67 +261,65 @@ public class BlocksizeMR extends Configured implements Tool {
 	 * @throws Exception
 	 */
 	public static void main(String[] args) throws Exception {
-
-		/*	if (args.length <2){
-			System.out.println("input and output missing!");
-		} */
-		Configuration conf = new Configuration();
+		String[] data = getInput(args);
+		String bs = data [0]; //Blocksize
+		Configuration conf = HBaseConfiguration.create();
 		conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
 		conf.addResource(new Path("/etc/alternatives/hadoop-conf/hdfs-site.xml"));
 		FileSystem fs = FileSystem.get(conf);
 
-
-		//TODO Wie komme ich an das Directory vom Video? Ich kann das ja nicht statisch darin lassen wir hier
-		//Genauer gesagt muss ich "anguilla ..." durch eine variable ersetzen. 
-		Path inputPath = new Path (fs.getWorkingDirectory()+"/hugo"+"/Frames/"
-				+ "Anguilla-shoal-bay-2016-02-20-06-55-45-168" +"/links.txt");
-
-		Path outPath = new Path (fs.getWorkingDirectory()+"/hugo");
+		String staticDir = fs.getHomeDirectory()+"/hugo"+"/Frames/";
+		Path inputPath = getLastModifiedHdfsFile(fs, new Path(staticDir));
+	
+		//System.out.println("1: " + inputPath);
 		FSDataInputStream in = fs.open(inputPath);
 		int counter = 0;
 		BufferedReader reader = new BufferedReader(new InputStreamReader(in));
 
 		String line = reader.readLine(); 
+		String lineZero = ""; //Erste Line enthaelt DBkey
+		String keyDB = ""; //Initialisierung 
+		String indexcount = "";
 		int res=-1;
+
 		while (line != null){
+			indexcount = imageCount(counter); //counter wird auf siebenstelliges Format gebracht und ...
 
-			//	String [] pathArray = line.split("/");
-
-			String [] tempDir = createTmpDir(line);
-			if(!tempDir[0].equals("") && !tempDir[1].equals("")){
-				String newPathStr = tempDir[0];
-
-				String op = newPathStr+".txt";
-				//String op = line+".txt";
-				FSDataOutputStream os = fs.create(new Path(op));
-				BufferedWriter oFile = new BufferedWriter(new OutputStreamWriter(os));
-
-				oFile.write(line);
-				System.out.println(line);
-				oFile.flush();
-				oFile.close();
-
-				String [] array = new String[]{op, outPath.toString()+"/output/"+String.valueOf(counter)};
-				res = ToolRunner.run(new Configuration(), new BlocksizeMR(), array);
-				counter ++;
-				String delDirStr = tempDir[1];
-				fs.delete(new Path(delDirStr), true);
-				/*	if (fs.delete(new Path(delDirStr), true)){
-				System.out.println("Delete successful");
+			if (counter == 0){
+				lineZero = line;
+				counter++;
+				keyDB = lineZero+"_"+indexcount; //... an Key angehangen
 			}
 			else {
-				System.out.println("Delete not successful");
-			} */
+				String [] tempDir = createTmpDir(line);
+				if(!tempDir[0].equals("") && !tempDir[1].equals("")){
+					String newPathStr = tempDir[0];
 
+					String op = newPathStr+".txt";
+					FSDataOutputStream os = fs.create(new Path(op));
+					BufferedWriter oFile = new BufferedWriter(new OutputStreamWriter(os));
+					oFile.write(line);
+					oFile.flush();
+					oFile.close();
+
+					keyDB = lineZero+ "_" +indexcount; //... an Key angehangen
+					String [] array = new String[]{op, keyDB, bs}; //Uebergabe der Parameter fuer Run Methode
+					res = ToolRunner.run(new Configuration(), new BlocksizeMR(), array); //start ders MR Jobs
+
+					counter ++; //counter inkrementieren
+					String delDirStr = tempDir[1];
+					fs.delete(new Path(delDirStr), true); //temporaererstellter Pfad loeschen
+				}
 				line = reader.readLine();
 			}
 		}
+		reader.close();  
+		
+		String[] data2 = new String[] {"getImagesOfVideo", data[1]};
+		writeDataFile(data2);
+		
 		System.exit(res);
 
-		reader.close();  
-		/*			
-		int res = ToolRunner.run(new Configuration(), new BlocksizeMR(), args);
-		System.exit(res); */
 	}
 	/**
 	 * Diese Methode schiebt den Order "tmp" vor dem Unterordner Frames und gibt ebenso das erstellte Directory zurueck
@@ -346,12 +358,113 @@ public class BlocksizeMR extends Configured implements Tool {
 				}
 			}
 			String newPathStr = "";
-			System.out.println(delDirStr);
+			//		System.out.println(delDirStr);
 			for (int i=0; i <newPath.length; i++){
 				newPathStr += newPath[i];
 			}
 			return new String []{newPathStr, delDirStr};
 		}
 		return new String []{"",""};
+	}
+
+	/**
+	 * die Methode bringt den uebergebenen Integer in eine 7 stellige Form
+	 * @param i Zahl, die anhangen werden soll
+	 * @return i in siebenstelliger Form
+	 */
+	public static String imageCount(int i) {
+		if (i<10) {
+			return "000000" + i;
+		} else if (i<100) {
+			return "00000" + i;
+		} else if (i<1000) {
+			return "0000" + i;
+		} else if (i<1000) {
+			return "000" + i;
+		} else if (i<10000) {
+			return "00" + i;
+		} else if (i<100000) {
+			return "0" + i;
+		} else if (i<1000000) {
+			return "" + i;
+		} else {
+			return "" + i;
+		}
+	}
+	/**
+	 * 
+	 * @param fs FileSystem
+	 * @param rootDir Dir, von dem aus die Methode gestartet werden soll
+	 * @return filePath zu der Datei, die als letztes modifziert wurde
+	 */
+	private static Path getLastModifiedHdfsFile(FileSystem fs, Path rootDir) {
+		
+		try {
+
+			FileStatus[] status = fs.listStatus(rootDir);
+			for (FileStatus file : status) {
+				if (file.isDir()) {
+					//System.out.println("DIRECTORY : " + file.getPath() + " - Last modification time : " + file.getModificationTime());
+					getLastModifiedHdfsFile(fs, file.getPath());
+				} else {
+					if (file.getModificationTime() > time) {
+						time = file.getModificationTime();
+						filePath = file.getPath();
+					}
+				}
+			}
+		} catch (IOException e) {
+			System.out.println("File not found");
+			e.printStackTrace();
+		}
+
+	//	System.out.println("FILE : " + filePath + " - Last modification time : " + time);
+		return filePath;  
+	}
+	
+	public static String[] getInput(String[] argv) throws IOException {
+		Configuration conf = new Configuration();
+		conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
+		conf.addResource(new Path("/etc/alternatives/hadoop-conf/hdfs-site.xml"));
+		FileSystem fs = FileSystem.get(conf);
+
+		FSDataInputStream in = fs.open(new Path (argv[0]));
+		FSDataInputStream in2 = fs.open(new Path (argv[0]));
+
+		BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+		BufferedReader reader2 = new BufferedReader(new InputStreamReader(in2));
+		int counter = 0;
+		String line = reader.readLine(); 
+
+		while (line != null){
+			counter++;
+			line = reader.readLine();
+		}
+		String[] array = new String[counter];
+		counter = 0;
+		line = reader2.readLine();
+		while (line != null){
+			array[counter] = line;
+			counter++;
+			line = reader2.readLine();
+		}
+		return array;
+	}
+	
+	public static void writeDataFile (String[] data) throws IOException {
+		Configuration conf = new Configuration();
+		conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
+		conf.addResource(new Path("/etc/alternatives/hadoop-conf/hdfs-site.xml"));
+		FileSystem fs = FileSystem.get(conf);
+
+		FSDataOutputStream os = fs.create(new Path("oozie/data.txt"));
+		BufferedWriter oFile = new BufferedWriter(new OutputStreamWriter(os));
+
+		for (String l: data){
+			oFile.write(l + "\n");
+		}
+
+		oFile.flush();
+		oFile.close();
 	}
 }
