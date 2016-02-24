@@ -1,0 +1,29 @@
+<html>
+    <head>
+	<title>HUGO</title>
+	</head>
+    <body bgcolor = "lightgrey" style="font-family: Arial">
+        <h1 align=center><font color="red">H</font><font color="blue">U</font><font color="green">G</font><font color="yellow">O</font></h1>
+        <h2 align=center><font color="red">H</font>ighly <font color="blue">U</font>seful <font color="green">G</font>raphical <font color="yellow">O</font>utput</h2>
+        
+        <div>
+            <form align=center action="http://localhost:81/cgi-bin/python.cgi" method="post">
+                <label>Video Link eingeben</label><br>
+		<p>URL</p>
+                <input name="URL" type="text" style="width:300px" />
+		<br>
+                <p>Blocksize</p>
+		<input name="Blocksize" type="text" width="100" />
+		<br>
+		<p>Analyseverfahren</p>
+		<select name="type" size="2">
+		    <option value="average" selected>Durchschnittsfarbe</option>
+		    <option value="domiant">dominante Farbe</option>
+		 </select>
+		<br><br>
+                <button type="submit">Analysieren</button>
+                <button tyoe="reset">Reset</button>
+            </form>
+        </div>
+    </body>
+</html>

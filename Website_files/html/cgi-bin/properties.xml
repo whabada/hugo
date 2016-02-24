@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <property>
+    <name>basePath</name>
+    <value>hdfs://quickstart.cloudera:8020/user/cloudera</value>
+  </property>
+  <property>
+    <name>user.name</name>
+    <value>cloudera</value>
+  </property>
+  <property>
+    <name>mapreduce.job.user.name</name>
+    <value>cloudera</value>
+  </property>
+  <property>
+    <name>data</name>
+    <value>hdfs://quickstart.cloudera:8020/user/cloudera/oozie/data.txt</value>
+  </property>
+  <property>
+    <name>nameNode</name>
+    <value>hdfs://quickstart.cloudera:8020</value>
+  </property>
+  <property>
+    <name>jobTracker</name>
+    <value>quickstart.cloudera:8032</value>
+  </property>
+  <property>
+    <name>oozie.wf.application.path</name>
+    <value>hdfs://quickstart.cloudera:8020/user/cloudera/oozie</value>
+  </property>
+</configuration>
+

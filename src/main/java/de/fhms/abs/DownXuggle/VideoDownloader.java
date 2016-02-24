@@ -49,6 +49,7 @@ public class VideoDownloader {
 		System.out.println("done");
 		return outFile.toString();
 	}
+
 	public static String[] videoToHdfs(String url) throws IOException {
 		URL u = new URL(url);
 

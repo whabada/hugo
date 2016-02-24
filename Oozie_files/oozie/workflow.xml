@@ -1,0 +1,62 @@
+<workflow-app name="My_Workflow" xmlns="uri:oozie:workflow:0.5">
+    <start to="HBase_ueberpruefen"/>
+    <kill name="Kill">
+        <message>Action failed, error message[${wf:errorMessage(wf:lastErrorNode())}]</message>
+    </kill>
+    <action name="HBase_ueberpruefen">
+        <java>
+            <job-tracker>${jobTracker}</job-tracker>
+            <name-node>${nameNode}</name-node>
+            <main-class>de.fhms.abs.hbase.hbase</main-class>
+            <java-opts> -Xms512m </java-opts>
+            <arg>${data}</arg>
+        </java>
+        <ok to="Download"/>
+        <error to="Kill"/>
+    </action>
+    <action name="Download">
+        <java>
+            <job-tracker>${jobTracker}</job-tracker>
+            <name-node>${nameNode}</name-node>
+            <main-class>de.fhms.abs.hbase.hbase</main-class>
+      	    <java-opts> -Xms512m </java-opts>
+            <arg>${data}</arg>
+        </java>
+        <ok to="In_Frames_splitten"/>
+        <error to="Kill"/>
+    </action>
+    <action name="In_Frames_splitten">
+        <java>
+            <job-tracker>${jobTracker}</job-tracker>
+            <name-node>${nameNode}</name-node>
+            <main-class>de.fhms.abs.DownXuggle.Main</main-class>
+      	    <java-opts> -Xms512m </java-opts>
+            <arg>${data}</arg>
+        </java>
+        <ok to="MapReduce"/>
+        <error to="Kill"/>
+    </action>
+    <action name="MapReduce">
+        <java>
+            <job-tracker>${jobTracker}</job-tracker>
+            <name-node>${nameNode}</name-node>
+            <main-class>de.fhms.abs.mrJobs.decideMR</main-class>
+      	    <java-opts> -Xms512m </java-opts>
+            <arg>${data}</arg>
+        </java>
+        <ok to="GenerateImage"/>
+        <error to="Kill"/>
+    </action>
+   <action name="GenerateImage">
+        <java>
+            <job-tracker>${jobTracker}</job-tracker>
+            <name-node>${nameNode}</name-node>
+            <main-class>de.fhms.abs.hbase.hbase</main-class>
+      	    <java-opts> -Xms512m </java-opts>
+            <arg>${data}</arg>
+        </java>
+        <ok to="End"/>
+        <error to="Kill"/>
+    </action>
+    <end name="End"/>
+</workflow-app>

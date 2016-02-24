@@ -2,10 +2,12 @@ package de.fhms.abs.outputgenerator;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
+import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStreamWriter;
 
 import javax.imageio.ImageIO;
 
@@ -41,6 +43,9 @@ public class generateImage {
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         image.setRGB(0, 0, width, height, pixels, 0, 0);
         
+        name = name.replace("\\(", "");
+        name = name.replace("\\)", "");
+        name = name.replace("\\%", "");
         String outputFilename =  name +".png"; 
         String outputFilePath = "hugo/resultImages/";
 
@@ -65,8 +70,28 @@ public class generateImage {
 		}
 
 		out.close(); 
+		
+		String[] data = new String[] {"/user/cloudera/" + outputFilePath + outputFilename};
+		writeDataFile(data);
         //File outputfile = new File("/home/cloudera/Pictures/image.jpg");
 	    //ImageIO.write(image, "jpg", outputfile);
         return image;
     }
+	
+	public static void writeDataFile (String[] data) throws IOException {
+		Configuration conf = new Configuration();
+		conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
+		conf.addResource(new Path("/etc/alternatives/hadoop-conf/hdfs-site.xml"));
+		FileSystem fs = FileSystem.get(conf);
+
+		FSDataOutputStream os = fs.create(new Path("oozie/data.txt"));
+		BufferedWriter oFile = new BufferedWriter(new OutputStreamWriter(os));
+
+		for (String l: data){
+			oFile.write(l + "\n");
+		}
+
+		oFile.flush();
+		oFile.close();
+	}
 }

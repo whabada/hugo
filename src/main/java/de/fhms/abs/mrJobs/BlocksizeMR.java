@@ -315,7 +315,7 @@ public class BlocksizeMR extends Configured implements Tool {
 		}
 		reader.close();  
 		
-		String[] data2 = new String[] {"getImagesOfVideo", data[1], data[2]};
+		String[] data2 = new String[] {"getImagesOfVideo", data[1], data[2], data[3]};
 		writeDataFile(data2);
 		
 		System.exit(res);

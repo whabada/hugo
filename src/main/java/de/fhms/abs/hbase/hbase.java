@@ -2,6 +2,8 @@ package de.fhms.abs.hbase;
 
 import de.fhms.abs.*;
 import de.fhms.abs.DownXuggle.VideoDownloader;
+import de.fhms.abs.mrJobs.BlocksizeMR;
+import de.fhms.abs.mrJobs.DominantColorMR;
 import de.fhms.abs.outputgenerator.generateImage;
 
 import java.net.URL;
@@ -91,6 +93,11 @@ public class hbase extends Configured implements Tool {
 
 				if (getVideoRecord(VIDEO_DATA, videokey)) {
 					System.out.println("Video in HBase vorhanden");
+					
+					System.out.println("Video noch nicht vorhanden -> Download");
+					String[] data = new String[] {"addVideoRecord", argv[1], argv[2], argv[3]};
+					writeDataFile(data);
+					
 					//Wurde die Blocksize bereits analysiert
 					if (blockSizeAnalyzed) {
 						//Analyse Daten sind für dieses Video und diese Blockgröße bereits vorhanden
@@ -109,7 +116,7 @@ public class hbase extends Configured implements Tool {
 					}
 				} else {
 					System.out.println("Video noch nicht vorhanden -> Download");
-					String[] data = new String[] {"addVideoRecord", argv[1], argv[2]};
+					String[] data = new String[] {"addVideoRecord", argv[1], argv[2], argv[3]};
 					writeDataFile(data);
 				}
 
@@ -122,7 +129,7 @@ public class hbase extends Configured implements Tool {
 				} else {
 					videokey = argv[1];
 				}
-				int[] data = getImagesOfVideo(IMAGE_DATA, videokey);
+				int[] data = getImagesOfVideo(IMAGE_DATA, videokey, argv[3]);
 				generateImage.getImageFromArray(data, outputWidth, outputHeight, argv[2]);
 
 			} else if (argv[0].equals("addImageRecord")) {
@@ -171,27 +178,9 @@ public class hbase extends Configured implements Tool {
 				addVideoRecord(VIDEO_DATA, hyperlink, name, hyperlink, filepath, offset, videoBlockSize, videoSize);
 
 				//extractVideo(videoInformation);
-				String[] data = new String[] {videoInformation[2], videoInformation[0], argv[2]};
+				String[] data = new String[] {videoInformation[2], videoInformation[0], argv[2], argv[3]};
 				writeDataFile(data);
 			}
-
-			//int[] data = getImagesOfVideo(IMAGE_DATA, "image_");
-			//generateImage.getImageFromArray(data, 100, 20);
-			/*Generate Testimages
-			Integer r = 0;
-			for (int i = 0; i < 100; i++) {
-
-				String avarageResult = "";
-				r = r + 20;
-				if (r > 255) {
-					r = 0;
-				}
-
-				avarageResult = r + ";0;0";
-				String dominantResult = "0;0;0";
-				addImageRecord("image_" + i, avarageResult, dominantResult);
-			}
-			 */
 		} finally {
 			// close everything down
 			if (table != null) table.close();
@@ -256,7 +245,7 @@ public class hbase extends Configured implements Tool {
 
 	}
 
-	public static int[] getImagesOfVideo (TableName tableName, String key) {
+	public static int[] getImagesOfVideo (TableName tableName, String key, String type) {
 		try{
 			System.out.println("get Images of Video");
 			Table table = con.getTable(tableName);
@@ -282,13 +271,20 @@ public class hbase extends Configured implements Tool {
 			int red = 0;
 			int green = 0;
 			int blue = 0;
-
+			
+			String typeName = "";
+			if (type == "average") {
+				typeName = "averageColor";
+			} else {
+				typeName = "dominantColor";
+			}
+			
 			int durchlaufe = 0;
 			for(Result r:rs){
 				int count2 = 0;
 				for(KeyValue kv : r.raw()){
 
-					if((new String(kv.getFamily())).equals("averageColor")) {
+					if((new String(kv.getFamily())).equals(typeName)) {
 						count2++;
 						if (new String(kv.getQualifier()).equals("R")) {
 							red = new Integer(new String(kv.getValue()));
@@ -318,7 +314,7 @@ public class hbase extends Configured implements Tool {
 			
 			
 			int x = 200;
-			if (data.length < 10) {
+			if (data.length < 8) {
 				outputHeight = outputHeight * x;
 				outputWidth = outputWidth * x;
 				int[] data2 = new int[outputHeight * outputWidth];
@@ -331,13 +327,24 @@ public class hbase extends Configured implements Tool {
 					}
 					
 				}
-				/*for (int n = 0; n < data.length; n++) {
-					for (int m = 0; m < x; m++) {
-						data2[n * x + m] = data[n];
-					}
-				}
-				*/
 				return data2;
+			} else  if (data.length < 50){
+				x = 160;
+				int frames = data.length / outputHeight;
+				outputHeight = outputHeight * x;
+				outputWidth = outputWidth * x;
+				int[] data2 = new int[outputHeight * outputWidth];
+						
+				for (int n = 0; n < frames; n++) {
+					for (int c = 0; c < x; c++) {
+						for (int r = 0; r < data2.length; r  = r + outputWidth) {
+							data2[n*x+c+r] = data[n];
+						}
+					}
+					
+				}
+				return data2;
+				
 			} else {
 				return data;
 			}
@@ -396,10 +403,6 @@ public class hbase extends Configured implements Tool {
 			counter++;
 			line = reader2.readLine();
 		}
-		//String[] array = new String[] {"getImagesOfVideo", "https"};
-		//String[] array = new String[] {"addVideoRecord", "https://upload.wikimedia.org/wikipedia/commons/4/4a/Anguilla-shoal-bay.ogg", "40"};
-		//String[] data = new String[] {"getVideoRecord", "https://upload.wikimedia.org/wikipedia/commons/4/4a/Anguilla-shoal-bay.ogg", "40"};
-		//String[] data = new String[] {"addImageRecord", "https://upload.wikimedia.org/wikipedia/commons/4/4a/Anguilla-shoal-bay.ogg", "19", "255;255;255", "0;0;0"};
 
 		int ret = ToolRunner.run(new hbase(), array);
 		System.exit(ret);
@@ -420,60 +423,5 @@ public class hbase extends Configured implements Tool {
 
 		oFile.flush();
 		oFile.close();
-	}
-
-	public static void extractVideo (String[] data) throws IOException {
-		String name = data[0];
-		String filepath = data[1];
-		String hyperlink = data[2];
-		String videoSize = data[3];
-		String offset = data[4];
-
-		System.out.println("name " + data[0]);
-		System.out.println("filepath" + data[1]);
-		System.out.println("hyperlink" + data[2]);
-		System.out.println("videosize" + data[3]);
-		System.out.println("offset" + data[4]);
-		Configuration conf = new Configuration();
-		conf.addResource(new Path("/etc/alternatives/hadoop-conf/core-site.xml"));
-		conf.addResource(new Path("/etc/alternatives/hadoop-conf/hdfs-site.xml"));
-		FileSystem fs = FileSystem.get(conf);
-
-		Path outFile = new Path(fs.getHomeDirectory() + "/hugo/tmp_video/" + name);
-		FSDataOutputStream out = null;
-		out = fs.create(outFile);
-
-		System.out.println(filepath);
-		Path path = new Path(filepath);
-		FSDataInputStream is = fs.open(path);
-		
-		int len = 0;
-		byte[] buffer = new byte[1024];
-		is.read(new byte[Integer.valueOf(offset) - 1]);
-		int count = 0;
-		System.out.println("Tmp outfile: " + outFile.toString());
-		if(is != null) {
-			Boolean read = true;
-			while (read) {
-				if (count + 1024 > Integer.valueOf(videoSize)) {
-					byte[] buffer2 = new byte[Integer.valueOf(videoSize) - count];
-					len = is.read(buffer2);
-					out.write(buffer2, 0, len);
-					read = false;
-					System.out.println(len);
-				} else {
-					len = is.read(buffer);
-					count = count + len;
-					System.out.println(len);
-					out.write(buffer,0, len);
-					
-				}
-			}
-			System.out.println("extract Video: Daten wurden geschrieben");
-		}
-
-		is.close();
-		out.flush();
-		out.close();
 	}
 }
