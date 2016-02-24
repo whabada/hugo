@@ -110,7 +110,10 @@ Der Vorgang kann je nach Videolänge auch über 15 min dauern.
 Beispielshalber dauert die Analyse eines 2 Minuten Videos auf einem unserer Systeme(MacBook Pro, 8 GB RAM) ca. 30 min.
 
 Beispiel Links:
+
 https://upload.wikimedia.org/wikipedia/commons/b/bc/Polish_farm_workers.ogg
+
 https://upload.wikimedia.org/wikipedia/commons/e/e6/Video_Corno_del_Renon.ogg
+
 https://upload.wikimedia.org/wikipedia/commons/a/af/SpaceX_Falcon_9_Flight_1_launch.ogv
 
