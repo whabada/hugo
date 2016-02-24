@@ -55,16 +55,16 @@ public class DominantColorMR extends Configured implements Tool {
 		}
 		/** 
 		 * Die Mapper Funktion erhaelt eine txt Datei, welche eine url zum Bild enthaelt. 
-		 * Es wird die die Farbe saemtlicher Pixel eingeladenen Bildes analysiert, 
-		 * in dem fuer jeden Farbwert gezaehlt wird, wie haeufig die Farbe erscheint.  
+		 * Es wird die Farbe saemtlicher Pixel eingeladenen Bildes analysiert, 
+		 * in dem fuer jeden Farbwert gezaehlt wird, wie haeufig diese Farbe erscheint.  
 		 * Diese Werte sind in Farbbloecke sortiert
 		 * Die Funktion funktioniert nur, wenn das Bild nicht null ist und groeßer als 1x1 ist.
 		 *  
 		 * @param key Nummer des Frames 
 		 * @param Text url, link zum Bild. 
 		 * @param context
-		 * @return (Key, one); Für jede Farbe R, G, B wird ausgebenen "RGB Farbcode, one", bspw. R10, one. 
-		 * @return ebenso wird die summe aller Pixel angehanden. 
+		 * @return (Key, one); Für jede Farbe wird der Farbcode ausgebenen "RGB Farbcode, one",  
+		 * @return bspw. R10 G0 B0, one
 		 * @throws IOException
 		 * @throws InterruptedException
 		 */
@@ -121,7 +121,7 @@ public class DominantColorMR extends Configured implements Tool {
 		/** Die Methode der aggregiert die Häufigkeit der "gesehenen" Farbwerte. 
 		 * Ermittelt wird der haeufigste vorkommende Farbwert, dieser wird in HBase gespeichert 
 		 * @param key: Die Eingangskey ist der Farbcode (R,G,B).
-		 * @param Iterable values: enthalten den durchschnittlichen Anteil des Farbcodes 
+		 * @param Iterable values: enthalten die Haeufigkeit der gesehenen Farbwerten 
 		 * @param context
 		 * @return key: R, G oder B 
 		 * @return text: resultValue
