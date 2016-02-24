@@ -102,8 +102,8 @@ public class VideoDownloader {
 
 		Path outFile = new Path(fs.getHomeDirectory() + "/hugo/videos/" + path.getName());
 		fs.setReplication(outFile, (short) 1);
-		FSDataOutputStream out = null;
-		if(hdfsFileLength+videoSizeCount > 19328060) {
+		FSDataOutputStream out = null;     
+		if(hdfsFileLength+videoSizeCount > 128000000) {
 			System.out.println("new File");
 			//Neue Datei
 			String fileName = path.getName();
