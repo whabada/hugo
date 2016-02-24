@@ -41,7 +41,7 @@ Requests Framework installieren
 ```
 $ git clone git://github.com/kennethreitz/requests.git
 $ cd requests
-$ python setup.py install
+$ sudo python setup.py install
 ```
 
 Zurück ins Home Verzeichnis
@@ -53,7 +53,7 @@ Hadoopy Framework installieren
 ```
 $ git clone https://github.com/bwhite/hadoopy.git
 $ cd hadoopy
-$ python setup.py install
+$ sudo python setup.py install
 ```
 
 
