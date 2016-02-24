@@ -34,6 +34,7 @@ Für das Verzeichnis html müssen noch die Lese- und Schreibrechte geändert wer
 ```
 $ sudo chmod 777 -R /var/www/
 $ sudo chmod 777 -R /var/www/html/cgi-bin/data.txt
+$ sudo chmod 777 -R /var/www/html/
 ```
 
 Requests Framework installieren
