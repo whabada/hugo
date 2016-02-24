@@ -31,7 +31,10 @@ Die bestehenden Website Files aus dem Repository können jetzt in das html Verze
 
 Für das Verzeichnis html müssen noch die Lese- und Schreibrechte geändert werden:
 
-```$ sudo chmod 777 -R /var/www/```
+```
+$ sudo chmod 777 -R /var/www/
+$ sudo chmod 777 -R /var/www/html/cgi-bin/data.txt
+```
 
 Requests Framework installieren
 ```
