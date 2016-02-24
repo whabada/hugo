@@ -6,9 +6,8 @@ Für das Projekt wurde die Cloudera VM in der Version 5.5.0 verwendet. Mit der v
 ## 1. Git Repository runterladen
 ```
 $ mkdir BDE
-$ mkdir BDE/hugo
-$ cd BDE/hugo
-$ clone https://github.com/whabada/hugo.git
+$ cd BDE
+$ git clone https://github.com/whabada/hugo.git
 $ cd $HOME
 ```
 ## 2. Web Server einrichten
@@ -23,7 +22,7 @@ wird dieser installiert
 
 Die Konfigurations des Web Servers wurde durch uns geändert. Daher muss die neue httpd.conf aus dem Repository in das httpd Verzeichnis kopiert werden.
 
-```$ sudo cp -f BDE/hugo/Website_files/httpd_conf/httpd.conf /etc/httpd/httpd.conf```
+```$ sudo cp -f BDE/hugo/Website_files/httpd_conf/httpd.conf /etc/httpd/conf/httpd.conf```
 
 Die bestehenden Website Files aus dem Repository können jetzt in das html Verzeichnis des Webserver kopiert werden.
 
@@ -45,6 +44,11 @@ $ cd requests
 $ python setup.py install
 ```
 
+Zurück ins Home Verzeichnis
+```
+$ cd ..
+```
+
 Hadoopy Framework installieren
 ```
 $ git clone https://github.com/bwhite/hadoopy.git
@@ -53,7 +57,7 @@ $ python setup.py install
 ```
 
 
-Anschließend kann der Webserver gestartet werden. Das muss jedes mal erfolgen wenn die VM neugestartet wird
+Anschließend kann der Webserver gestartet werden. Das muss jedes mal erfolgen, wenn die VM neugestartet wird
 
 ```
 sudo /etc/init.d/httpd start
@@ -62,21 +66,14 @@ Die Webseite ist dann über http://localhost:81 zu erreichen.
 
 
 ## 3. HDFS Einrichten
-Ordnerstruktur im HDFS einrichten
-```
-$ hdfs dfs mkdir hugo
-$ hdfs dfs mkdir hugo/Frames
-$ hdfs dfs mkdir hugo/videos
-$ hdfs dfs mkdir hugo/tmp_video
-$ hdfs dfs mkdir hugo/resultImages
-```
 
-Oozie Ornder kopieren
+
+Oozie Ordner kopieren
 
 ``` $ hdfs dfs -put BDE/hugo/Oozie_files/oozie/ ```
 
 ## 4. HBase Einrichten
-HUGO benötigt zum speichern seiner Daten zwei Tabellen in welchen Ergebnisse gespeichert werden. Zum einen die Tabelle "vmd" (Video Meta Data") in welcher die folgenden Informationen gespeichert werden:
+HUGO benötigt zum Speichern seiner Daten zwei Tabellen, in welchen Ergebnisse gespeichert werden. Zum einen, die Tabelle "vmd" (Video Meta Data"), in welcher die folgenden Informationen gespeichert werden:
 - filesize
 - hyperlink
 - name
@@ -103,8 +100,8 @@ Die Tablle "imageData" wird über den folgenden Befehl erstellt:
 
 ## 5. HUGO Starten
 
-Die Webseite über ```localhost:81``` im Webbrowser aufrufen.
-Als Hyperlink kann dann ein Video von WikiMedia ```https://commons.wikimedia.org/wiki/Main_Page```angeben werden.
+Die Webseite über localhost:81 im Webbrowser aufrufen.
+Als Hyperlink kann dann ein Video von WikiMedia https://commons.wikimedia.org/wiki/Main_Page angeben werden.
 Der Link des Videos muss der direkte Downloadlink zu der Datei sein und darf keine Klammern enthalten, was bei manchen Videos der Fall ist.
 Anschließend muss noch eine Blocksize eingeben Werden. Dies muss eine ganze Zahl in dem bereicht von 1 - 255 sein.
 Die Analyse wird dann über einen Button gestartet. 
