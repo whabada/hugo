@@ -76,6 +76,24 @@ public class VideoDownloader {
 			System.out.println("initial File");
 			initialVideoFile = true;
 			path = new Path(fs.getHomeDirectory() + "/hugo/videos/video_0.mp4");
+			FileSystem hdfs = path.getFileSystem(conf);
+			ContentSummary cSummary = hdfs.getContentSummary(path);
+			hdfsFileLength = cSummary.getLength();
+
+			byte[] buffer = new byte[1024];
+			int len1 = 0;
+
+			Path outFile = new Path(fs.getHomeDirectory() + "/hugo/tmp_video/" + videoName);
+			FSDataOutputStream out = null;
+			out = fs.create(outFile);
+			if(is != null) {
+				while ((len1 = is.read(buffer)) > 0) {
+					videoSizeCount = videoSizeCount + len1;
+					out.write(buffer,0, len1);
+				}
+			}
+			is.close();
+			out.close();
 		} else {
 			FileSystem hdfs = path.getFileSystem(conf);
 			ContentSummary cSummary = hdfs.getContentSummary(path);
@@ -103,7 +121,7 @@ public class VideoDownloader {
 		Path outFile = new Path(fs.getHomeDirectory() + "/hugo/videos/" + path.getName());
 		fs.setReplication(outFile, (short) 1);
 		FSDataOutputStream out = null;     
-		if(hdfsFileLength+videoSizeCount > 128000000) {
+		if(hdfsFileLength+videoSizeCount > 10000000000L) {
 			System.out.println("new File");
 			//Neue Datei
 			String fileName = path.getName();
